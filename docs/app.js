@@ -103,6 +103,14 @@ async function loadAllData() {
     rawCategoryRows = categoryRows;
     rawBudgetData = parseRows(budgetRows);
     rawTransactionData = parseRows(txnRows);
+    console.log('Data loaded:', {
+      kpis: rawKpiRows?.length,
+      monthly: rawMonthlyData?.length,
+      annual: rawAnnualData?.length,
+      categories: rawCategoryRows?.length,
+      budget: rawBudgetData?.length,
+      transactions: rawTransactionData?.length,
+    });
 
     populateYearFilter();
     setupFilterListeners();
@@ -319,16 +327,24 @@ function renderAnnualSummary() {
 // ── Category Breakdown ──
 
 function renderCategoryBreakdown() {
-  if (!rawCategoryRows || rawCategoryRows.length < 2) return;
+  const container = document.getElementById('tab-categories');
+  console.log('Category rows:', rawCategoryRows?.length, rawCategoryRows);
+  if (!rawCategoryRows || rawCategoryRows.length < 2) {
+    container.querySelector('.chart-row').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem">No category data available. Run the CLI to process transactions.</p>';
+    return;
+  }
 
   const headers = rawCategoryRows[0];
   const categories = headers.slice(1);
-  if (!categories.length) return;
+  if (!categories.length) {
+    container.querySelector('.chart-row').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem">No spending categories found.</p>';
+    return;
+  }
 
   // Row 1 is budget, rows 2+ are monthly data
   const allDataRows = rawCategoryRows.slice(2);
   if (!allDataRows.length) {
-    // If no monthly data rows yet, try using budget row as single data point
+    container.querySelector('.chart-row').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem">No monthly spending data yet.</p>';
     return;
   }
 
