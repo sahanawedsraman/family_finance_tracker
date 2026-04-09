@@ -1,0 +1,28 @@
+# Google OAuth credentials - NEVER commit these
+credentials.json
+token.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# State
+processed_files.json
+
+# Logs
+logs/
+*.log
+
+# Environment
+.env
+venv/
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
