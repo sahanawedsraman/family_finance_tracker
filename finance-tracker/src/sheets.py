@@ -540,10 +540,11 @@ def write_category_breakdown_tab(
     """Write the Category Breakdown tab with per-category per-month spending and budget comparison."""
     _clear_sheet(service, spreadsheet_id, TAB_CATEGORY_BREAKDOWN)
 
-    # Collect all categories across all months (combined only)
+    # Collect all categories across all months (combined only), excluding non-spending categories
     combined = [m for m in metrics if m.person == "Combined"]
     all_categories = sorted(
         {cat for m in combined for cat in m.category_spending}
+        - BUDGET_EXCLUDED_CATEGORIES
     )
 
     headers = ["Month"] + all_categories
