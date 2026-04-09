@@ -33,6 +33,8 @@ function initAuth() {
   document.getElementById('btn-refresh').addEventListener('click', () => {
     if (accessToken) loadAllData();
   });
+  document.getElementById('btn-theme').addEventListener('click', toggleTheme);
+  initMobileNav();
 }
 
 function onTokenResponse(resp) {
@@ -150,6 +152,8 @@ function filterByPeriod(data, monthKey) {
 
 function applyFilters() {
   renderKPIs();
+  renderSparklines();
+  renderCategoryComparison();
   renderMonthlySummary();
   renderAnnualSummary();
   renderCategoryBreakdown();
@@ -171,7 +175,7 @@ function renderKPIs() {
   const totalIncome = filtered.reduce((s, r) => s + (parseFloat(r['Total Income']) || 0), 0);
   const totalExpenses = filtered.reduce((s, r) => s + Math.abs(parseFloat(r['Total Expenses']) || 0), 0);
   const netSavings = totalIncome - totalExpenses;
-  const savingsRate = totalIncome > 0 ? (netSavings / totalIncome * 100) : 0;
+  const savingsRate = (totalIncome > 0 && totalExpenses > 0) ? (netSavings / totalIncome * 100) : 0;
 
   const numMonths = filtered.length;
   const totalMonths = rawMonthlyData.length || 1;
@@ -315,12 +319,18 @@ function renderAnnualSummary() {
 // ── Category Breakdown ──
 
 function renderCategoryBreakdown() {
-  if (!rawCategoryRows || rawCategoryRows.length < 3) return;
+  if (!rawCategoryRows || rawCategoryRows.length < 2) return;
 
   const headers = rawCategoryRows[0];
   const categories = headers.slice(1);
+  if (!categories.length) return;
+
   // Row 1 is budget, rows 2+ are monthly data
   const allDataRows = rawCategoryRows.slice(2);
+  if (!allDataRows.length) {
+    // If no monthly data rows yet, try using budget row as single data point
+    return;
+  }
 
   // Filter by period
   const prefix = getFilteredMonth();
@@ -398,6 +408,9 @@ function renderBudgetStatus() {
 // ── Transactions ──
 
 let txnFiltersInitialized = false;
+let txnSortCol = 'Date';
+let txnSortAsc = false; // default: newest first
+let currentFilteredTxns = [];
 
 function renderTransactions() {
   const prefix = getFilteredMonth();
@@ -424,7 +437,72 @@ function renderTransactions() {
     return true;
   });
 
-  renderTransactionTable(filtered);
+  currentFilteredTxns = filtered;
+  renderTopCategories(filtered);
+  renderTransactionTable(sortTransactions(filtered));
+}
+
+function sortTransactions(data) {
+  const sorted = [...data];
+  sorted.sort((a, b) => {
+    let va = a[txnSortCol] || '';
+    let vb = b[txnSortCol] || '';
+    if (txnSortCol === 'Amount') {
+      va = parseFloat(va) || 0;
+      vb = parseFloat(vb) || 0;
+    }
+    if (va < vb) return txnSortAsc ? -1 : 1;
+    if (va > vb) return txnSortAsc ? 1 : -1;
+    return 0;
+  });
+  return sorted;
+}
+
+function onSortClick(col) {
+  if (txnSortCol === col) {
+    txnSortAsc = !txnSortAsc;
+  } else {
+    txnSortCol = col;
+    txnSortAsc = col === 'Date' ? false : true;
+  }
+  renderTransactionTable(sortTransactions(currentFilteredTxns));
+}
+
+function renderTopCategories(data) {
+  const spending = {};
+  data.forEach(r => {
+    const amt = parseFloat(r.Amount) || 0;
+    if (amt < 0) {
+      const cat = r.Category || 'Other';
+      spending[cat] = (spending[cat] || 0) + Math.abs(amt);
+    }
+  });
+
+  const top5 = Object.entries(spending)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  let container = document.getElementById('top-categories-container');
+  if (!container) {
+    const parent = document.getElementById('transactions-table-container').parentElement;
+    container = document.createElement('div');
+    container.id = 'top-categories-container';
+    container.className = 'top-categories';
+    parent.insertBefore(container, document.getElementById('transactions-table-container'));
+  }
+
+  if (!top5.length) { container.innerHTML = ''; return; }
+
+  const colors = generateColors(5);
+  let html = '<div class="top-cats-row">';
+  top5.forEach(([cat, amt], i) => {
+    html += `<div class="top-cat-chip" style="border-left: 3px solid ${colors[i]}">
+      <span class="top-cat-name">${cat}</span>
+      <span class="top-cat-amt">${fmtNum(amt)}</span>
+    </div>`;
+  });
+  html += '</div>';
+  container.innerHTML = html;
 }
 
 function populateTransactionFilters(data) {
@@ -450,8 +528,13 @@ function populateTransactionFilters(data) {
 
 function renderTransactionTable(data) {
   const container = document.getElementById('transactions-table-container');
+  const cols = ['Date', 'Description', 'Amount', 'Category', 'Person', 'Type'];
+
   let html = '<div class="table-scroll"><table><thead><tr>';
-  html += '<th>Date</th><th>Description</th><th>Amount</th><th>Category</th><th>Person</th><th>Type</th>';
+  cols.forEach(col => {
+    const arrow = txnSortCol === col ? (txnSortAsc ? ' ▲' : ' ▼') : '';
+    html += `<th class="sortable" data-col="${col}">${col}${arrow}</th>`;
+  });
   html += '</tr></thead><tbody>';
 
   data.forEach(r => {
@@ -473,6 +556,11 @@ function renderTransactionTable(data) {
 
   html += '</tbody></table></div>';
   container.innerHTML = html;
+
+  // Attach sort listeners
+  container.querySelectorAll('th.sortable').forEach(th => {
+    th.addEventListener('click', () => onSortClick(th.dataset.col));
+  });
 }
 
 // ── Chart Helpers ──
@@ -501,6 +589,135 @@ function generateColors(count) {
 function fmtNum(val) {
   const n = parseFloat(val) || 0;
   return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// ── Theme Toggle ──
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  const next = current === 'light' ? '' : 'light';
+  if (next) {
+    html.setAttribute('data-theme', 'light');
+  } else {
+    html.removeAttribute('data-theme');
+  }
+  document.getElementById('btn-theme').textContent = next === 'light' ? '☀️' : '🌙';
+  localStorage.setItem('theme', next || 'dark');
+  // Re-render charts with new colors
+  if (accessToken) applyFilters();
+}
+
+// Restore saved theme
+(function() {
+  const saved = localStorage.getItem('theme');
+  if (saved === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    const btn = document.getElementById('btn-theme');
+    if (btn) btn.textContent = '☀️';
+  }
+})();
+
+// ── Sparklines ──
+
+function renderSparkline(canvasId, values, color) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || !values.length) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const range = max - min || 1;
+  const step = w / (values.length - 1 || 1);
+
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  values.forEach((v, i) => {
+    const x = i * step;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+}
+
+function renderSparklines() {
+  // Savings rate sparkline from monthly data
+  const months = rawMonthlyData.map(r => {
+    const inc = parseFloat(r['Total Income']) || 0;
+    const exp = Math.abs(parseFloat(r['Total Expenses']) || 0);
+    return inc > 0 ? ((inc - exp) / inc * 100) : 0;
+  });
+  renderSparkline('spark-savings', months.slice(-6), '#6c63ff');
+
+  // Spending sparkline
+  const spending = rawMonthlyData.map(r => Math.abs(parseFloat(r['Total Expenses']) || 0));
+  renderSparkline('spark-spending', spending.slice(-6), '#f87171');
+}
+
+// ── Category vs Last Month ──
+
+function renderCategoryComparison() {
+  const container = document.getElementById('category-comparison');
+  if (!container) return;
+
+  const sorted = [...rawMonthlyData].sort((a, b) => (a.Month || '').localeCompare(b.Month || ''));
+  if (sorted.length < 1) { container.innerHTML = ''; return; }
+
+  // Get last two months from category breakdown
+  if (!rawCategoryRows || rawCategoryRows.length < 3) { container.innerHTML = ''; return; }
+
+  const headers = rawCategoryRows[0];
+  const categories = headers.slice(1);
+  const dataRows = rawCategoryRows.slice(2);
+
+  if (dataRows.length < 1) { container.innerHTML = ''; return; }
+
+  const latest = dataRows[dataRows.length - 1];
+  const prev = dataRows.length >= 2 ? dataRows[dataRows.length - 2] : null;
+
+  let html = '';
+  categories.forEach((cat, ci) => {
+    const curr = parseFloat(latest[ci + 1]) || 0;
+    if (curr === 0) return;
+    const prevAmt = prev ? (parseFloat(prev[ci + 1]) || 0) : 0;
+    const change = prevAmt > 0 ? ((curr - prevAmt) / prevAmt * 100) : 0;
+    const changeStr = prevAmt > 0
+      ? `<span style="color:${change > 0 ? 'var(--red)' : 'var(--green)'}">${change > 0 ? '↑' : '↓'} ${Math.abs(change).toFixed(0)}% vs last month</span>`
+      : '<span style="color:var(--text-muted)">new</span>';
+
+    html += `<div class="cat-compare-card">
+      <div class="cat-compare-name">${cat}</div>
+      <div class="cat-compare-amount">${fmtNum(curr)}</div>
+      <div class="cat-compare-change">${changeStr}</div>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+// ── Mobile Bottom Nav ──
+
+function initMobileNav() {
+  document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Update mobile nav active state
+      document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      // Also update desktop tabs
+      const tab = btn.dataset.tab;
+      document.querySelectorAll('.tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.tab === tab);
+        t.setAttribute('aria-selected', t.dataset.tab === tab ? 'true' : 'false');
+      });
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+    });
+  });
 }
 
 // ── Tab Navigation ──

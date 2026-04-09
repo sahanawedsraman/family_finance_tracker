@@ -32,6 +32,7 @@
       </div>
       <div class="header-right">
         <span id="user-name"></span>
+        <button id="btn-theme" class="btn-small" aria-label="Toggle theme">🌙</button>
         <button id="btn-refresh" class="btn-small" aria-label="Refresh data">🔄 Refresh</button>
         <button id="btn-signout" class="btn-small" aria-label="Sign out">Sign Out</button>
       </div>
@@ -64,6 +65,7 @@
       <div class="kpi-card">
         <div class="kpi-label">Savings Rate</div>
         <div class="kpi-value" id="kpi-savings-rate">—</div>
+        <canvas id="spark-savings" class="sparkline" width="120" height="30"></canvas>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Total Budget</div>
@@ -72,11 +74,16 @@
       <div class="kpi-card">
         <div class="kpi-label">Total Spending</div>
         <div class="kpi-value" id="kpi-total-spending">—</div>
+        <canvas id="spark-spending" class="sparkline" width="120" height="30"></canvas>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Budget Health</div>
         <div class="kpi-value" id="kpi-budget-health">—</div>
       </div>
+    </section>
+
+    <!-- Category vs Last Month -->
+    <section id="category-comparison" class="category-comparison" aria-label="Category comparison vs last month">
     </section>
 
     <!-- Insights -->
@@ -138,6 +145,15 @@
     <footer>
       <p>Data last updated from Google Sheets. Run the CLI to refresh.</p>
     </footer>
+
+    <!-- Mobile Bottom Nav -->
+    <nav class="mobile-nav" aria-label="Mobile navigation">
+      <button class="mobile-nav-btn active" data-tab="monthly">📊</button>
+      <button class="mobile-nav-btn" data-tab="annual">📅</button>
+      <button class="mobile-nav-btn" data-tab="categories">🏷️</button>
+      <button class="mobile-nav-btn" data-tab="budget">💰</button>
+      <button class="mobile-nav-btn" data-tab="transactions">📝</button>
+    </nav>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
