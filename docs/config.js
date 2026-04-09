@@ -24,7 +24,7 @@
 
 const CONFIG = {
   // Replace with your Web application OAuth Client ID
-  GOOGLE_CLIENT_ID: '1032991254185-7m61bnrqk7cqpf4ek8veel8tlfo6ijmo.apps.googleusercontent.com',
+  GOOGLE_CLIENT_ID: '482681209964-3mkqgfdkdn8fnvqhnskkiet3cshlu58o.apps.googleusercontent.com',
 
   // Your Google Sheet ID (from the URL: docs.google.com/spreadsheets/d/THIS_PART/edit)
   SPREADSHEET_ID: '1b2tOJBzgu9xpd7Dvy38NDqAyKKi9cyEl1b0cJdpkz1Q',
