@@ -142,22 +142,22 @@ def _generate_insights(
     budget_health_pct: float,
     mom_trends: dict[str, float],
 ) -> list[str]:
-    """Generate actionable financial insights from the data."""
+    """Generate gentle, actionable financial insights from the data."""
     insights: list[str] = []
 
     # Savings rate insights
     if savings_rate >= 30:
-        insights.append(f"✅ Great savings rate of {savings_rate:.1f}%. You're saving well above the recommended 20%.")
+        insights.append(f"You're saving {savings_rate:.1f}% of your income — that's really strong.")
     elif savings_rate >= 20:
-        insights.append(f"👍 Solid savings rate of {savings_rate:.1f}%. You're meeting the recommended 20% target.")
+        insights.append(f"Savings rate is {savings_rate:.1f}%, right on track with the 20% guideline.")
     elif savings_rate >= 10:
-        insights.append(f"⚠️ Savings rate is {savings_rate:.1f}%. Try to increase it toward the 20% target.")
+        insights.append(f"Savings rate is {savings_rate:.1f}%. A little more could go a long way toward the 20% goal.")
     elif savings_rate > 0:
-        insights.append(f"🔴 Low savings rate of {savings_rate:.1f}%. Review spending to find areas to cut back.")
+        insights.append(f"Savings rate is {savings_rate:.1f}%. It might help to look for a few areas to trim.")
     else:
-        insights.append("🔴 You're spending more than you earn. Immediate spending cuts needed.")
+        insights.append("Spending is currently higher than income. Worth reviewing together where to adjust.")
 
-    # Budget overruns — categories where spending exceeds budget
+    # Budget overruns
     over_budget = []
     under_budget = []
     for cat, budget_amt in budgets.items():
@@ -172,46 +172,44 @@ def _generate_insights(
             elif pct < 50 and actual > 0:
                 under_budget.append((cat, pct, monthly_budget - actual))
 
-    # Sort by most over budget first
     over_budget.sort(key=lambda x: x[1], reverse=True)
     for cat, pct, overage in over_budget[:3]:
-        insights.append(f"🔴 {cat}: {pct:.0f}% of budget (${overage:,.0f} over). Reduce spending here.")
+        insights.append(f"{cat} is at {pct:.0f}% of budget (${overage:,.0f} over) — might be worth a look.")
 
     under_budget.sort(key=lambda x: x[2], reverse=True)
     for cat, pct, savings in under_budget[:2]:
-        insights.append(f"✅ {cat}: Only {pct:.0f}% of budget used. ${savings:,.0f} saved vs budget.")
+        insights.append(f"Nice — {cat} is only at {pct:.0f}% of budget. ${savings:,.0f} under.")
 
     # Spending trend insights
     if mom_trends:
         sorted_months = sorted(mom_trends.keys())
         recent_trends = [mom_trends[m] for m in sorted_months[-3:]]
         if all(t > 5 for t in recent_trends):
-            insights.append("📈 Spending has been increasing for the last few months. Watch for lifestyle creep.")
+            insights.append("Spending has been gradually increasing — just something to keep an eye on.")
         elif all(t < -5 for t in recent_trends):
-            insights.append("📉 Spending is trending down. Great job cutting costs.")
+            insights.append("Spending has been coming down lately — nice trend.")
 
-        # Latest month trend
         latest = sorted_months[-1]
         latest_pct = mom_trends[latest]
         if latest_pct > 15:
-            insights.append(f"⚠️ Spending jumped {latest_pct:.1f}% in {latest}. Check for unusual expenses.")
+            insights.append(f"Spending was up {latest_pct:.1f}% in {latest} — could be a one-time thing or worth checking.")
         elif latest_pct < -15:
-            insights.append(f"✅ Spending dropped {abs(latest_pct):.1f}% in {latest}. Nice reduction.")
+            insights.append(f"Spending was down {abs(latest_pct):.1f}% in {latest} — good progress.")
 
-    # Top spending category insight
+    # Top spending category
     if total_cat_spending:
         top_cat, top_amt = max(total_cat_spending.items(), key=lambda x: x[1])
         total_spending = sum(total_cat_spending.values())
         if total_spending > 0:
             pct_of_total = top_amt / total_spending * 100
             if pct_of_total > 30:
-                insights.append(f"💡 {top_cat} is {pct_of_total:.0f}% of all spending (${top_amt:,.0f}). Consider if this can be optimized.")
+                insights.append(f"{top_cat} makes up {pct_of_total:.0f}% of spending (${top_amt:,.0f}). Just something to be aware of.")
 
     # Overall budget health
     if budget_health_pct > 100:
-        insights.append(f"🔴 Overall spending is {budget_health_pct:.0f}% of total budget. You're over budget.")
+        insights.append(f"Overall spending is at {budget_health_pct:.0f}% of budget — a bit over, but adjustable.")
     elif budget_health_pct > 90:
-        insights.append(f"⚠️ Spending is at {budget_health_pct:.0f}% of budget. Getting close to the limit.")
+        insights.append(f"Spending is at {budget_health_pct:.0f}% of budget — getting close but still on track.")
 
     return insights
 

@@ -1,15 +1,15 @@
 :root {
-  --bg: #faf8f5;
+  --bg: #f7f5f2;
   --surface: #ffffff;
-  --surface2: #f3f0ec;
-  --border: #e8e4de;
-  --text: #2d2a26;
-  --text-muted: #8a857e;
-  --accent: #7c6fae;
-  --accent-hover: #6a5d9a;
-  --green: #5ba88c;
-  --red: #d4726a;
-  --yellow: #c9a84c;
+  --surface2: #f0ede8;
+  --border: #e5e1db;
+  --text: #3d3832;
+  --text-muted: #9b958d;
+  --accent: #8b7eb5;
+  --accent-hover: #7a6da3;
+  --green: #7db8a0;
+  --red: #c9897f;
+  --yellow: #c4ad6e;
   --radius: 16px;
 }
 
@@ -247,8 +247,8 @@ header h1 { font-size: 1.3rem; }
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
-.kpi-label { color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
-.kpi-value { font-size: 1.6rem; font-weight: 700; margin-top: 0.25rem; }
+.kpi-label { color: var(--text-muted); font-size: 0.75rem; letter-spacing: 0.02em; }
+.kpi-value { font-size: 1.4rem; font-weight: 600; margin-top: 0.25rem; }
 
 /* Insights */
 .insights-container {
@@ -313,10 +313,9 @@ th, td {
 th {
   background: var(--surface2);
   color: var(--text-muted);
-  font-weight: 600;
-  text-transform: uppercase;
+  font-weight: 500;
   font-size: 0.75rem;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.01em;
   position: sticky;
   top: 0;
 }

@@ -906,14 +906,12 @@ function renderSpendingPace() {
 
   const projected = (spent / dayOfMonth) * daysInMonth;
   const dailyAvg = spent / dayOfMonth;
-  const emoji = projected > spent * 1.5 ? '🔴' : projected > spent * 1.2 ? '⚠️' : '✅';
 
   container.innerHTML = `
-    <span class="pace-icon">${emoji}</span>
     <div class="pace-text">
-      <strong>This month:</strong> ${fmtNum(spent)} spent in ${dayOfMonth} days
-      (${fmtNum(dailyAvg)}/day).
-      <span class="pace-projected">Projected: ${fmtNum(projected)} by month end.</span>
+      <strong>This month so far:</strong> ${fmtNum(spent)} spent over ${dayOfMonth} days
+      (about ${fmtNum(dailyAvg)}/day).
+      On this pace, it'd be around ${fmtNum(projected)} by month end.
     </div>
   `;
 }
@@ -1048,7 +1046,7 @@ function renderRecurring() {
 
   if (!recurring.length) { container.innerHTML = ''; return; }
 
-  let html = '<div class="recurring-header">🔄 Recurring Transactions (appears in 2+ months)</div>';
+  let html = '<div class="recurring-header">Recurring charges (seen in 2+ months)</div>';
   html += '<div class="recurring-list">';
   recurring.forEach(r => {
     html += `<div class="recurring-chip">
