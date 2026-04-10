@@ -64,8 +64,9 @@ function showAuthScreen() {
 async function fetchSheet(tab) {
   if (!accessToken) throw new Error('Not authenticated');
   const range = encodeURIComponent(tab);
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}/values/${range}`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  const cacheBust = Date.now();
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}/values/${range}?t=${cacheBust}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' });
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error?.message || `Failed to fetch ${tab}`);
@@ -264,7 +265,7 @@ function renderMonthlySummary() {
     html += `<tr>
       <td>${r.Month}</td>
       <td>${fmtNum(r['Total Income'])}</td>
-      <td>${fmtNum(r['Total Expenses'])}</td>
+      <td>${fmtNum(Math.abs(parseFloat(r['Total Expenses']) || 0))}</td>
       <td class="${cls}">${fmtNum(r['Net Savings'])}</td>
       <td>${r['Savings Rate (%)'] || '0'}%</td>
     </tr>`;
@@ -312,7 +313,7 @@ function renderAnnualSummary() {
     html += `<tr>
       <td>${r.Year}</td>
       <td>${fmtNum(r['Total Income'])}</td>
-      <td>${fmtNum(r['Total Expenses'])}</td>
+      <td>${fmtNum(Math.abs(parseFloat(r['Total Expenses']) || 0))}</td>
       <td class="${cls}">${fmtNum(r['Net Savings'])}</td>
       <td>${r['Savings Rate (%)'] || '0'}%</td>
       <td>${fmtNum(r['Avg Monthly Spending'])}</td>

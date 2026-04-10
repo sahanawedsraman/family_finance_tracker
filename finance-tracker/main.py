@@ -252,6 +252,11 @@ def run_pipeline(config_path="config.yaml"):
             ))
 
         logger.info("Read back %d merged transactions for metrics", len(all_merged_txns))
+        # Debug: show amount distribution
+        pos = sum(1 for t in all_merged_txns if t.amount > 0)
+        neg = sum(1 for t in all_merged_txns if t.amount < 0)
+        zero = sum(1 for t in all_merged_txns if t.amount == 0)
+        logger.info("Amount distribution: %d positive, %d negative, %d zero", pos, neg, zero)
 
     except Exception as e:
         msg = f"Failed to write/read transactions: {e}"
