@@ -160,12 +160,16 @@ function filterByPeriod(data, monthKey) {
 function applyFilters() {
   renderKPIs();
   renderSparklines();
+  renderSpendingPace();
   renderCategoryComparison();
   renderMonthlySummary();
   renderAnnualSummary();
   renderCategoryBreakdown();
+  renderIncomeBreakdown();
   renderBudgetStatus();
+  renderBudgetProgress();
   renderTransactions();
+  renderRecurring();
 }
 
 // ── KPIs ──
@@ -738,6 +742,160 @@ function renderCategoryComparison() {
     </div>`;
   });
 
+  container.innerHTML = html;
+}
+
+// ── Spending Pace ──
+
+function renderSpendingPace() {
+  const container = document.getElementById('spending-pace');
+  if (!container) return;
+
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const dayOfMonth = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+  const monthTxns = rawTransactionData.filter(r => (r.Date || '').startsWith(currentMonth));
+  const excludeCats = new Set(['Income', 'Taxes', 'Retirement', 'Investment', 'Transfer']);
+  const spent = monthTxns.reduce((s, r) => {
+    const amt = parseNum(r.Amount);
+    const cat = r.Category || 'Other';
+    return (amt < 0 && !excludeCats.has(cat)) ? s + Math.abs(amt) : s;
+  }, 0);
+
+  if (spent === 0) { container.innerHTML = ''; return; }
+
+  const projected = (spent / dayOfMonth) * daysInMonth;
+  const dailyAvg = spent / dayOfMonth;
+  const emoji = projected > spent * 1.5 ? '🔴' : projected > spent * 1.2 ? '⚠️' : '✅';
+
+  container.innerHTML = `
+    <span class="pace-icon">${emoji}</span>
+    <div class="pace-text">
+      <strong>This month:</strong> ${fmtNum(spent)} spent in ${dayOfMonth} days
+      (${fmtNum(dailyAvg)}/day).
+      <span class="pace-projected">Projected: ${fmtNum(projected)} by month end.</span>
+    </div>
+  `;
+}
+
+// ── Budget Progress Bars ──
+
+function renderBudgetProgress() {
+  const container = document.getElementById('budget-progress-container');
+  if (!container || !rawBudgetData.length) return;
+
+  let html = '';
+  rawBudgetData.forEach(r => {
+    const budget = parseNum(r['Total Budget']);
+    const actual = parseNum(r['Total Actual']);
+    if (budget <= 0) return;
+    const pct = Math.min((actual / budget) * 100, 150);
+    const color = pct > 100 ? 'var(--red)' : pct > 80 ? 'var(--yellow)' : 'var(--green)';
+
+    html += `<div class="budget-bar-card">
+      <div class="budget-bar-header">
+        <span class="budget-bar-name">${r.Category}</span>
+        <span class="budget-bar-pct" style="color:${color}">${pct.toFixed(0)}%</span>
+      </div>
+      <div class="budget-bar-track">
+        <div class="budget-bar-fill" style="width:${Math.min(pct, 100)}%;background:${color}"></div>
+      </div>
+      <div class="budget-bar-amounts">
+        <span>${fmtNum(actual)} spent</span>
+        <span>${fmtNum(budget)} budget</span>
+      </div>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+// ── Income Breakdown Donut ──
+
+function renderIncomeBreakdown() {
+  const prefix = getFilteredMonth();
+  const txns = prefix
+    ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
+    : rawTransactionData;
+
+  const buckets = { 'Gross Pay': 0, 'Taxes': 0, 'Retirement': 0, 'Benefits': 0, 'Net Take-Home': 0 };
+  const incomeCats = new Set(['Income']);
+  const taxCats = new Set(['Taxes']);
+  const retireCats = new Set(['Retirement']);
+  const benefitCats = new Set(['Healthcare', 'Insurance']);
+
+  let totalIncome = 0;
+  let totalDeductions = 0;
+
+  txns.forEach(r => {
+    const amt = parseNum(r.Amount);
+    const cat = r.Category || 'Other';
+    if (incomeCats.has(cat) && amt > 0) { buckets['Gross Pay'] += amt; totalIncome += amt; }
+    else if (taxCats.has(cat) && amt < 0) { buckets['Taxes'] += Math.abs(amt); totalDeductions += Math.abs(amt); }
+    else if (retireCats.has(cat) && amt < 0) { buckets['Retirement'] += Math.abs(amt); totalDeductions += Math.abs(amt); }
+    else if (benefitCats.has(cat) && amt < 0 && r['Source File'] === 'Manual Entry') {
+      buckets['Benefits'] += Math.abs(amt); totalDeductions += Math.abs(amt);
+    }
+  });
+
+  buckets['Net Take-Home'] = Math.max(0, totalIncome - totalDeductions);
+
+  const labels = Object.keys(buckets).filter(k => buckets[k] > 0);
+  const data = labels.map(k => buckets[k]);
+  if (!data.length) return;
+
+  const colors = ['#34d399', '#f87171', '#6c63ff', '#fbbf24', '#60a5fa'];
+  createOrUpdateChart('chart-income-breakdown', 'doughnut', {
+    labels,
+    datasets: [{ data, backgroundColor: colors.slice(0, labels.length) }],
+  }, {
+    plugins: { title: { display: true, text: 'Income Breakdown', color: '#e4e6f0' } },
+    cutout: '55%',
+  });
+}
+
+// ── Recurring Transactions ──
+
+function renderRecurring() {
+  const container = document.getElementById('recurring-container');
+  if (!container) return;
+
+  // Find transactions that appear in 2+ months with similar descriptions
+  const byDesc = {};
+  rawTransactionData.forEach(r => {
+    const amt = parseNum(r.Amount);
+    if (amt >= 0) return;
+    const desc = (r.Description || '').toLowerCase().replace(/[^a-z ]/g, '').trim();
+    const month = (r.Date || '').substring(0, 7);
+    if (!desc || !month) return;
+    if (!byDesc[desc]) byDesc[desc] = { months: new Set(), amounts: [], display: r.Description };
+    byDesc[desc].months.add(month);
+    byDesc[desc].amounts.push(Math.abs(amt));
+  });
+
+  const recurring = Object.entries(byDesc)
+    .filter(([_, v]) => v.months.size >= 2)
+    .map(([_, v]) => ({
+      name: v.display,
+      avgAmt: v.amounts.reduce((a, b) => a + b, 0) / v.amounts.length,
+      count: v.months.size,
+    }))
+    .sort((a, b) => b.avgAmt - a.avgAmt)
+    .slice(0, 10);
+
+  if (!recurring.length) { container.innerHTML = ''; return; }
+
+  let html = '<div class="recurring-header">🔄 Recurring Transactions (appears in 2+ months)</div>';
+  html += '<div class="recurring-list">';
+  recurring.forEach(r => {
+    html += `<div class="recurring-chip">
+      <span class="recurring-name">${r.name}</span>
+      <span class="recurring-amt">~${fmtNum(r.avgAmt)}/mo</span>
+    </div>`;
+  });
+  html += '</div>';
   container.innerHTML = html;
 }
 

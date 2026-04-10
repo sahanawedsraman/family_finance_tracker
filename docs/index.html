@@ -84,6 +84,9 @@
       </div>
     </section>
 
+    <!-- Spending Pace Card -->
+    <section id="spending-pace" class="spending-pace-card" aria-label="Spending pace"></section>
+
     <!-- Category vs Last Month -->
     <section id="category-comparison" class="category-comparison" aria-label="Category comparison vs last month">
     </section>
@@ -123,9 +126,13 @@
         <div class="chart-wrapper"><canvas id="chart-category-pie" aria-label="Spending by category pie chart"></canvas></div>
         <div class="chart-wrapper"><canvas id="chart-category-bar" aria-label="Category spending bar chart"></canvas></div>
       </div>
+      <div class="chart-row" style="margin-top:1rem">
+        <div class="chart-wrapper"><canvas id="chart-income-breakdown" aria-label="Income breakdown donut"></canvas></div>
+      </div>
     </div>
 
     <div id="tab-budget" class="tab-panel" role="tabpanel">
+      <div id="budget-progress-container"></div>
       <div class="chart-single">
         <canvas id="chart-budget" aria-label="Budget vs actual spending chart"></canvas>
       </div>
@@ -133,6 +140,7 @@
     </div>
 
     <div id="tab-transactions" class="tab-panel" role="tabpanel">
+      <div id="recurring-container"></div>
       <div class="table-controls">
         <input type="text" id="txn-search" placeholder="Search transactions..." aria-label="Search transactions">
         <select id="txn-person-filter" aria-label="Filter by person">
