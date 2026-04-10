@@ -491,21 +491,63 @@ function renderBudgetStatus() {
   if (!rawBudgetData.length) return;
 
   const excludeCats = new Set(['Income', 'Taxes', 'Retirement', 'Investment', 'Transfer', 'Healthcare', 'Utilities']);
-  const prefix = getFilteredMonth();
 
-  // Get filtered transactions
-  const txns = prefix
+  // Get base monthly budget per category
+  const totalMonthsInSheet = rawMonthlyData.length || 1;
+  const baseBudgetPerMonth = {};
+  rawBudgetData.forEach(r => {
+    if (!excludeCats.has(r.Category)) {
+      baseBudgetPerMonth[r.Category] = parseNum(r['Total Budget']) / totalMonthsInSheet;
+    }
+  });
+
+  // Get all months with transactions, sorted
+  const allMonths = new Set();
+  rawTransactionData.forEach(r => {
+    const m = (r.Date || '').substring(0, 7);
+    if (m) allMonths.add(m);
+  });
+  const sortedMonths = [...allMonths].sort();
+
+  // Compute spending per category per month
+  const spendingByMonth = {};
+  rawTransactionData.forEach(r => {
+    const amt = parseNum(r.Amount);
+    const cat = r.Category || 'Other';
+    const month = (r.Date || '').substring(0, 7);
+    if (amt < 0 && !excludeCats.has(cat) && month) {
+      if (!spendingByMonth[month]) spendingByMonth[month] = {};
+      spendingByMonth[month][cat] = (spendingByMonth[month][cat] || 0) + Math.abs(amt);
+    }
+  });
+
+  // Compute rolling budget: carry over surplus/deficit from previous months
+  const allCats = Object.keys(baseBudgetPerMonth);
+  const rollingCarryover = {};  // cat -> accumulated carryover
+  allCats.forEach(cat => { rollingCarryover[cat] = 0; });
+
+  // Walk through months in order, accumulating carryover
+  sortedMonths.forEach(month => {
+    allCats.forEach(cat => {
+      const base = baseBudgetPerMonth[cat] || 0;
+      const effectiveBudget = base + rollingCarryover[cat];
+      const spent = (spendingByMonth[month] || {})[cat] || 0;
+      rollingCarryover[cat] = effectiveBudget - spent;  // positive = surplus, negative = deficit
+    });
+  });
+
+  // Now compute display values based on the filter
+  const prefix = getFilteredMonth();
+  const filteredTxns = prefix
     ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
     : rawTransactionData;
 
-  // Count months in the filtered period
-  const months = new Set();
-  txns.forEach(r => { const m = (r.Date || '').substring(0, 7); if (m) months.add(m); });
-  const numMonths = months.size || 1;
+  const filteredMonths = new Set();
+  filteredTxns.forEach(r => { const m = (r.Date || '').substring(0, 7); if (m) filteredMonths.add(m); });
+  const numFilteredMonths = filteredMonths.size || 1;
 
-  // Compute actual spending per category from transactions
   const actualSpending = {};
-  txns.forEach(r => {
+  filteredTxns.forEach(r => {
     const amt = parseNum(r.Amount);
     const cat = r.Category || 'Other';
     if (amt < 0 && !excludeCats.has(cat)) {
@@ -513,33 +555,41 @@ function renderBudgetStatus() {
     }
   });
 
-  // Build budget data from the Sheet's budget data (for monthly budget amounts)
-  // and scale by number of months in the filter
-  const budgetPerMonth = {};
-  rawBudgetData.forEach(r => {
-    const totalMonthsInSheet = rawMonthlyData.length || 1;
-    budgetPerMonth[r.Category] = parseNum(r['Total Budget']) / totalMonthsInSheet;
+  // For the selected period, compute rolling budget
+  // Walk months up to the filter period to get the starting carryover
+  const filteredSorted = [...filteredMonths].sort();
+  const monthsBefore = sortedMonths.filter(m => filteredSorted.length > 0 && m < filteredSorted[0]);
+  const periodCarryover = {};
+  allCats.forEach(cat => { periodCarryover[cat] = 0; });
+  monthsBefore.forEach(month => {
+    allCats.forEach(cat => {
+      const base = baseBudgetPerMonth[cat] || 0;
+      const effective = base + periodCarryover[cat];
+      const spent = (spendingByMonth[month] || {})[cat] || 0;
+      periodCarryover[cat] = effective - spent;
+    });
   });
-
-  const allCats = [...new Set([...Object.keys(budgetPerMonth), ...Object.keys(actualSpending)])]
-    .filter(c => !excludeCats.has(c))
-    .sort();
 
   const categories = [];
   const budgets = [];
   const actuals = [];
   const diffs = [];
   const statuses = [];
+  const carryovers = [];
 
-  allCats.forEach(cat => {
-    const budget = (budgetPerMonth[cat] || 0) * numMonths;
+  allCats.sort().forEach(cat => {
+    const baseBudget = (baseBudgetPerMonth[cat] || 0) * numFilteredMonths;
+    const carryover = periodCarryover[cat] || 0;
+    const effectiveBudget = baseBudget + carryover;
     const actual = actualSpending[cat] || 0;
-    if (budget === 0 && actual === 0) return;
+    if (effectiveBudget === 0 && actual === 0) return;
+
     categories.push(cat);
-    budgets.push(budget);
+    budgets.push(effectiveBudget);
     actuals.push(actual);
-    diffs.push(budget - actual);
-    statuses.push(budget - actual >= 0 ? 'Under Budget' : 'Over Budget');
+    diffs.push(effectiveBudget - actual);
+    statuses.push(effectiveBudget - actual >= 0 ? 'Under Budget' : 'Over Budget');
+    carryovers.push(carryover);
   });
 
   if (!categories.length) return;
@@ -547,7 +597,7 @@ function renderBudgetStatus() {
   createOrUpdateChart('chart-budget', 'bar', {
     labels: categories,
     datasets: [
-      { label: 'Budget', data: budgets, backgroundColor: 'rgba(91, 168, 140, 0.7)' },
+      { label: 'Budget (with rollover)', data: budgets, backgroundColor: 'rgba(91, 168, 140, 0.7)' },
       { label: 'Actual', data: actuals, backgroundColor: 'rgba(212, 114, 106, 0.7)' },
     ],
   }, {
@@ -557,12 +607,17 @@ function renderBudgetStatus() {
 
   const container = document.getElementById('budget-table-container');
   let html = '<div class="table-scroll"><table><thead><tr>';
-  html += '<th>Category</th><th>Budget</th><th>Actual</th><th>Difference</th><th>Status</th>';
+  html += '<th>Category</th><th>Base Budget</th><th>Rollover</th><th>Effective Budget</th><th>Actual</th><th>Remaining</th><th>Status</th>';
   html += '</tr></thead><tbody>';
   categories.forEach((cat, i) => {
+    const base = (baseBudgetPerMonth[cat] || 0) * numFilteredMonths;
+    const co = carryovers[i];
     const statusCls = statuses[i] === 'Under Budget' ? 'status-under' : 'status-over';
+    const coCls = co >= 0 ? 'amount-positive' : 'amount-negative';
     html += `<tr>
       <td>${cat}</td>
+      <td>${fmtNum(base)}</td>
+      <td class="${coCls}">${fmtNum(co)}</td>
       <td>${fmtNum(budgets[i])}</td>
       <td>${fmtNum(actuals[i])}</td>
       <td class="${diffs[i] >= 0 ? 'amount-positive' : 'amount-negative'}">${fmtNum(diffs[i])}</td>

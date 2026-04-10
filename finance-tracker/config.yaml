@@ -30,11 +30,12 @@ budgets:
   Groceries: 800
   Dining: 300
   Entertainment: 150
-  Amazon: 300
-  Shopping: 500
+  Amazon: 500
+  Shopping: 100
   Subscriptions: 100
   Travel: 300
   Childcare: 0
+  Other: 500
 
 log_level: "INFO"
 
