@@ -155,7 +155,18 @@ function populateYearFilter() {
 
 function setupFilterListeners() {
   document.getElementById('filter-year').addEventListener('change', applyFilters);
-  document.getElementById('filter-month').addEventListener('change', applyFilters);
+  document.getElementById('filter-month').addEventListener('change', () => {
+    const monthVal = document.getElementById('filter-month').value;
+    const yearSelect = document.getElementById('filter-year');
+    // Auto-select current year when a month is picked and no year is selected
+    if (monthVal && !yearSelect.value) {
+      const currentYear = String(new Date().getFullYear());
+      if ([...yearSelect.options].some(o => o.value === currentYear)) {
+        yearSelect.value = currentYear;
+      }
+    }
+    applyFilters();
+  });
 }
 
 function getFilteredMonth() {
