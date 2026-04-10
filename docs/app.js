@@ -1047,8 +1047,7 @@ function initMenu() {
     signOut();
   });
 
-  // Set initial active
-  document.querySelector('.menu-item[data-tab="monthly"]')?.classList.add('active');
+  // Set initial active (home is set in HTML already)
 }
 
 function switchTab(tabName) {

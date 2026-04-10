@@ -49,6 +49,7 @@
         <button id="btn-menu-close" class="btn-menu-close">✕</button>
       </div>
       <div class="menu-items">
+        <button class="menu-item active" data-tab="home">🏠 Overview</button>
         <button class="menu-item" data-tab="monthly">📊 Monthly Summary</button>
         <button class="menu-item" data-tab="annual">📅 Annual Summary</button>
         <button class="menu-item" data-tab="categories">🏷️ Categories</button>
@@ -82,41 +83,43 @@
       </select>
     </div>
 
-    <!-- KPI Cards -->
-    <section id="kpi-section" class="kpi-grid" aria-label="Key Performance Indicators">
-      <div class="kpi-card">
-        <div class="kpi-label">Savings Rate</div>
-        <div class="kpi-value" id="kpi-savings-rate">—</div>
-        <canvas id="spark-savings" class="sparkline" width="120" height="30"></canvas>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Total Budget</div>
-        <div class="kpi-value" id="kpi-total-budget">—</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Total Spending</div>
-        <div class="kpi-value" id="kpi-total-spending">—</div>
-        <canvas id="spark-spending" class="sparkline" width="120" height="30"></canvas>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Budget Health</div>
-        <div class="kpi-value" id="kpi-budget-health">—</div>
-      </div>
-    </section>
-
-    <!-- Spending Pace Card -->
-    <section id="spending-pace" class="spending-pace-card" aria-label="Spending pace"></section>
-
-    <!-- Category vs Last Month -->
-    <section id="category-comparison" class="category-comparison" aria-label="Category comparison vs last month">
-    </section>
-
-    <!-- Insights -->
-    <section id="insights-section" class="insights-container" aria-label="Financial Insights">
-      <div id="insights-list"></div>
-    </section>
     <!-- Tab Panels -->
-    <div id="tab-monthly" class="tab-panel active" role="tabpanel">
+    <div id="tab-home" class="tab-panel active" role="tabpanel">
+      <!-- KPI Cards -->
+      <section id="kpi-section" class="kpi-grid" aria-label="Key Performance Indicators">
+        <div class="kpi-card">
+          <div class="kpi-label">Savings Rate</div>
+          <div class="kpi-value" id="kpi-savings-rate">—</div>
+          <canvas id="spark-savings" class="sparkline" width="120" height="30"></canvas>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Total Budget</div>
+          <div class="kpi-value" id="kpi-total-budget">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Total Spending</div>
+          <div class="kpi-value" id="kpi-total-spending">—</div>
+          <canvas id="spark-spending" class="sparkline" width="120" height="30"></canvas>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Budget Health</div>
+          <div class="kpi-value" id="kpi-budget-health">—</div>
+        </div>
+      </section>
+
+      <!-- Spending Pace Card -->
+      <section id="spending-pace" class="spending-pace-card" aria-label="Spending pace"></section>
+
+      <!-- Category vs Last Month -->
+      <section id="category-comparison" class="category-comparison" aria-label="Category comparison vs last month"></section>
+
+      <!-- Insights -->
+      <section id="insights-section" class="insights-container" aria-label="Financial Insights">
+        <div id="insights-list"></div>
+      </section>
+    </div>
+
+    <div id="tab-monthly" class="tab-panel" role="tabpanel">
       <div class="chart-row">
         <canvas id="chart-income-expenses" aria-label="Income vs Expenses chart"></canvas>
         <canvas id="chart-savings-trend" aria-label="Savings trend chart"></canvas>
