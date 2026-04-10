@@ -154,7 +154,10 @@ function populateYearFilter() {
 }
 
 function setupFilterListeners() {
-  document.getElementById('filter-year').addEventListener('change', applyFilters);
+  document.getElementById('filter-year').addEventListener('change', () => {
+    updateMonthOptions();
+    applyFilters();
+  });
   document.getElementById('filter-month').addEventListener('change', () => {
     const monthVal = document.getElementById('filter-month').value;
     const yearSelect = document.getElementById('filter-year');
@@ -167,6 +170,48 @@ function setupFilterListeners() {
     }
     applyFilters();
   });
+}
+
+const MONTH_NAMES = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+
+function updateMonthOptions() {
+  const yearVal = document.getElementById('filter-year').value;
+  const monthSelect = document.getElementById('filter-month');
+  const currentVal = monthSelect.value;
+
+  if (!yearVal) {
+    // No year selected — show all 12 months
+    monthSelect.innerHTML = '<option value="">All Months</option>';
+    for (let i = 1; i <= 12; i++) {
+      const val = String(i).padStart(2, '0');
+      monthSelect.innerHTML += `<option value="${val}">${MONTH_NAMES[i]}</option>`;
+    }
+  } else {
+    // Find which months have data for this year
+    const monthsWithData = new Set();
+    rawTransactionData.forEach(r => {
+      const d = r.Date || '';
+      if (d.startsWith(yearVal)) monthsWithData.add(d.substring(5, 7));
+    });
+    rawMonthlyData.forEach(r => {
+      const m = r.Month || '';
+      if (m.startsWith(yearVal)) monthsWithData.add(m.substring(5, 7));
+    });
+
+    monthSelect.innerHTML = '<option value="">All Months</option>';
+    [...monthsWithData].sort().forEach(mm => {
+      const idx = parseInt(mm, 10);
+      monthSelect.innerHTML += `<option value="${mm}">${MONTH_NAMES[idx]}</option>`;
+    });
+  }
+
+  // Restore selection if still valid
+  if ([...monthSelect.options].some(o => o.value === currentVal)) {
+    monthSelect.value = currentVal;
+  } else {
+    monthSelect.value = '';
+  }
 }
 
 function getFilteredMonth() {
