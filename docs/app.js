@@ -130,6 +130,13 @@ async function loadAllData() {
     populateYearFilter();
     setupFilterListeners();
     applyFilters();
+
+    // Restore tab from URL hash
+    const hash = window.location.hash.replace('#', '');
+    if (hash && document.getElementById('tab-' + hash)) {
+      switchTab(hash);
+      document.querySelectorAll('.menu-item[data-tab]').forEach(i => i.classList.toggle('active', i.dataset.tab === hash));
+    }
   } catch (err) {
     console.error('Failed to load data:', err);
     alert('Failed to load data. Make sure the Sheet is shared with your account.');
@@ -1162,6 +1169,7 @@ function initMenu() {
 function switchTab(tabName) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('tab-' + tabName).classList.add('active');
+  window.location.hash = tabName;
 
   setTimeout(() => {
     Object.values(charts).forEach(c => c.resize());
