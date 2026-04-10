@@ -32,15 +32,33 @@
   <div id="dashboard" class="screen hidden">
     <header>
       <div class="header-left">
+        <button id="btn-menu" class="btn-menu" aria-label="Menu">☰</button>
         <h1><img src="logo.png" alt="Logo" class="app-logo"> Family Finance Tracker</h1>
       </div>
       <div class="header-right">
-        <span id="user-name"></span>
-        <button id="btn-theme" class="btn-small" aria-label="Toggle theme">🌙</button>
-        <button id="btn-refresh" class="btn-small" aria-label="Refresh data">🔄 Refresh</button>
-        <button id="btn-signout" class="btn-small" aria-label="Sign out">Sign Out</button>
+        <button id="btn-privacy" class="btn-small" aria-label="Toggle privacy">👁️</button>
+        <button id="btn-refresh" class="btn-small" aria-label="Refresh data">🔄</button>
       </div>
     </header>
+
+    <!-- Slide-out Menu -->
+    <div id="menu-overlay" class="menu-overlay hidden"></div>
+    <nav id="side-menu" class="side-menu hidden">
+      <div class="menu-header">
+        <h2>Menu</h2>
+        <button id="btn-menu-close" class="btn-menu-close">✕</button>
+      </div>
+      <div class="menu-items">
+        <button class="menu-item" data-tab="monthly">📊 Monthly Summary</button>
+        <button class="menu-item" data-tab="annual">📅 Annual Summary</button>
+        <button class="menu-item" data-tab="categories">🏷️ Categories</button>
+        <button class="menu-item" data-tab="budget">💰 Budget Status</button>
+        <button class="menu-item" data-tab="transactions">📝 Transactions</button>
+        <hr class="menu-divider">
+        <button class="menu-item" id="menu-theme">🌙 Dark Mode</button>
+        <button class="menu-item" id="menu-signout">🚪 Sign Out</button>
+      </div>
+    </nav>
 
     <!-- Global Time Filter -->
     <div class="time-filter" aria-label="Time period filter">
@@ -96,15 +114,7 @@
     <!-- Insights -->
     <section id="insights-section" class="insights-container" aria-label="Financial Insights">
       <div id="insights-list"></div>
-    </section>    <!-- Tab Navigation -->
-    <nav class="tabs" role="tablist" aria-label="Dashboard sections">
-      <button class="tab active" role="tab" aria-selected="true" data-tab="monthly">Monthly Summary</button>
-      <button class="tab" role="tab" aria-selected="false" data-tab="annual">Annual Summary</button>
-      <button class="tab" role="tab" aria-selected="false" data-tab="categories">Categories</button>
-      <button class="tab" role="tab" aria-selected="false" data-tab="budget">Budget Status</button>
-      <button class="tab" role="tab" aria-selected="false" data-tab="transactions">Transactions</button>
-    </nav>
-
+    </section>
     <!-- Tab Panels -->
     <div id="tab-monthly" class="tab-panel active" role="tabpanel">
       <div class="chart-row">
@@ -144,13 +154,20 @@
     <div id="tab-transactions" class="tab-panel" role="tabpanel">
       <div id="recurring-container"></div>
       <div class="table-controls">
-        <input type="text" id="txn-search" placeholder="Search transactions..." aria-label="Search transactions">
+        <input type="text" id="txn-search" placeholder="Search description..." aria-label="Search transactions">
         <select id="txn-person-filter" aria-label="Filter by person">
           <option value="">All People</option>
         </select>
         <select id="txn-category-filter" aria-label="Filter by category">
           <option value="">All Categories</option>
         </select>
+        <select id="txn-type-filter" aria-label="Filter by type">
+          <option value="">All Types</option>
+          <option value="debit">Expenses</option>
+          <option value="credit">Income</option>
+        </select>
+        <input type="number" id="txn-min-amount" placeholder="Min $" aria-label="Minimum amount" style="width:90px">
+        <input type="number" id="txn-max-amount" placeholder="Max $" aria-label="Maximum amount" style="width:90px">
       </div>
       <div id="transactions-table-container"></div>
     </div>
@@ -158,15 +175,6 @@
     <footer>
       <p>Last updated: <span id="last-updated">—</span></p>
     </footer>
-
-    <!-- Mobile Bottom Nav -->
-    <nav class="mobile-nav" aria-label="Mobile navigation">
-      <button class="mobile-nav-btn active" data-tab="monthly">📊</button>
-      <button class="mobile-nav-btn" data-tab="annual">📅</button>
-      <button class="mobile-nav-btn" data-tab="categories">🏷️</button>
-      <button class="mobile-nav-btn" data-tab="budget">💰</button>
-      <button class="mobile-nav-btn" data-tab="transactions">📝</button>
-    </nav>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>

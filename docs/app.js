@@ -37,12 +37,11 @@ function initAuth() {
   document.getElementById('btn-signin').addEventListener('click', () => {
     tokenClient.requestAccessToken();
   });
-  document.getElementById('btn-signout').addEventListener('click', signOut);
   document.getElementById('btn-refresh').addEventListener('click', () => {
     if (accessToken) loadAllData();
   });
-  document.getElementById('btn-theme').addEventListener('click', toggleTheme);
-  initMobileNav();
+  document.getElementById('btn-privacy').addEventListener('click', togglePrivacy);
+  initMenu();
 }
 
 function onTokenResponse(resp) {
@@ -213,8 +212,8 @@ function renderKPIs() {
   const budgetHealth = periodBudget > 0 ? (totalExpenses / periodBudget * 100) : 0;
 
   document.getElementById('kpi-savings-rate').textContent = savingsRate.toFixed(1) + '%';
-  document.getElementById('kpi-total-budget').textContent = '$' + periodBudget.toLocaleString(undefined, {maximumFractionDigits: 0});
-  document.getElementById('kpi-total-spending').textContent = '$' + totalExpenses.toLocaleString(undefined, {maximumFractionDigits: 0});
+  document.getElementById('kpi-total-budget').innerHTML = '<span class="money">$' + periodBudget.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span>';
+  document.getElementById('kpi-total-spending').innerHTML = '<span class="money">$' + totalExpenses.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span>';
 
   const healthEl = document.getElementById('kpi-budget-health');
   healthEl.textContent = budgetHealth.toFixed(1) + '%';
@@ -536,17 +535,27 @@ function renderTransactions() {
     document.getElementById('txn-search').addEventListener('input', renderTransactions);
     document.getElementById('txn-person-filter').addEventListener('change', renderTransactions);
     document.getElementById('txn-category-filter').addEventListener('change', renderTransactions);
+    document.getElementById('txn-type-filter').addEventListener('change', renderTransactions);
+    document.getElementById('txn-min-amount').addEventListener('input', renderTransactions);
+    document.getElementById('txn-max-amount').addEventListener('input', renderTransactions);
     txnFiltersInitialized = true;
   }
 
   const search = document.getElementById('txn-search').value.toLowerCase();
   const person = document.getElementById('txn-person-filter').value;
   const category = document.getElementById('txn-category-filter').value;
+  const txnType = document.getElementById('txn-type-filter').value;
+  const minAmt = parseFloat(document.getElementById('txn-min-amount').value);
+  const maxAmt = parseFloat(document.getElementById('txn-max-amount').value);
 
   const filtered = periodFiltered.filter(r => {
     if (person && r.Person !== person) return false;
     if (category && r.Category !== category) return false;
+    if (txnType && r.Type !== txnType) return false;
     if (search && !r.Description?.toLowerCase().includes(search)) return false;
+    const amt = Math.abs(parseNum(r.Amount));
+    if (!isNaN(minAmt) && amt < minAmt) return false;
+    if (!isNaN(maxAmt) && amt > maxAmt) return false;
     return true;
   });
 
@@ -709,7 +718,8 @@ function parseNum(val) {
 
 function fmtNum(val) {
   const n = parseNum(val);
-  return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatted = '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `<span class="money">${formatted}</span>`;
 }
 
 // ── Theme Toggle ──
@@ -719,11 +729,9 @@ function toggleTheme() {
   const isDark = html.getAttribute('data-theme') === 'dark';
   if (isDark) {
     html.removeAttribute('data-theme');
-    document.getElementById('btn-theme').textContent = '🌙';
     localStorage.setItem('theme', 'light');
   } else {
     html.setAttribute('data-theme', 'dark');
-    document.getElementById('btn-theme').textContent = '☀️';
     localStorage.setItem('theme', 'dark');
   }
   if (accessToken) applyFilters();
@@ -734,8 +742,6 @@ function toggleTheme() {
   const saved = localStorage.getItem('theme');
   if (saved === 'dark') {
     document.documentElement.setAttribute('data-theme', 'dark');
-    const btn = document.getElementById('btn-theme');
-    if (btn) btn.textContent = '☀️';
   }
 })();
 
@@ -998,34 +1004,71 @@ function renderRecurring() {
   container.innerHTML = html;
 }
 
-// ── Mobile Bottom Nav ──
+// ── Hamburger Menu ──
 
-function initMobileNav() {
-  document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+function initMenu() {
+  const menu = document.getElementById('side-menu');
+  const overlay = document.getElementById('menu-overlay');
+
+  document.getElementById('btn-menu').addEventListener('click', () => {
+    menu.classList.remove('hidden');
+    overlay.classList.remove('hidden');
   });
+
+  function closeMenu() {
+    menu.classList.add('hidden');
+    overlay.classList.add('hidden');
+  }
+
+  document.getElementById('btn-menu-close').addEventListener('click', closeMenu);
+  overlay.addEventListener('click', closeMenu);
+
+  // Tab items in menu
+  document.querySelectorAll('.menu-item[data-tab]').forEach(item => {
+    item.addEventListener('click', () => {
+      switchTab(item.dataset.tab);
+      // Update active state in menu
+      document.querySelectorAll('.menu-item[data-tab]').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      closeMenu();
+    });
+  });
+
+  // Theme toggle in menu
+  document.getElementById('menu-theme').addEventListener('click', () => {
+    toggleTheme();
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.getElementById('menu-theme').textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+  });
+
+  // Sign out in menu
+  document.getElementById('menu-signout').addEventListener('click', () => {
+    closeMenu();
+    signOut();
+  });
+
+  // Set initial active
+  document.querySelector('.menu-item[data-tab="monthly"]')?.classList.add('active');
 }
 
-// ── Tab Navigation ──
-
 function switchTab(tabName) {
-  document.querySelectorAll('.tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
-
-  const tabBtn = document.querySelector(`.tab[data-tab="${tabName}"]`);
-  if (tabBtn) { tabBtn.classList.add('active'); tabBtn.setAttribute('aria-selected', 'true'); }
   document.getElementById('tab-' + tabName).classList.add('active');
 
-  // Resize charts in the newly visible tab so they render correctly
   setTimeout(() => {
     Object.values(charts).forEach(c => c.resize());
   }, 50);
 }
 
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => switchTab(tab.dataset.tab));
-});
+// ── Privacy Toggle ──
+
+let privacyMode = false;
+
+function togglePrivacy() {
+  privacyMode = !privacyMode;
+  document.getElementById('dashboard').classList.toggle('privacy-mode', privacyMode);
+  document.getElementById('btn-privacy').textContent = privacyMode ? '🔒' : '👁️';
+}
 
 // ── Init ──
 initAuth();
