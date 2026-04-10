@@ -404,13 +404,61 @@ function renderCategoryBreakdown() {
 // ── Budget Status ──
 
 function renderBudgetStatus() {
-  // Budget status is aggregate — we show it as-is but note the period
-  const data = rawBudgetData;
-  if (!data.length) return;
+  if (!rawBudgetData.length) return;
 
-  const categories = data.map(r => r.Category);
-  const budgets = data.map(r => parseNum(r['Total Budget']) || 0);
-  const actuals = data.map(r => parseNum(r['Total Actual']) || 0);
+  const excludeCats = new Set(['Income', 'Taxes', 'Retirement', 'Investment', 'Transfer']);
+  const prefix = getFilteredMonth();
+
+  // Get filtered transactions
+  const txns = prefix
+    ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
+    : rawTransactionData;
+
+  // Count months in the filtered period
+  const months = new Set();
+  txns.forEach(r => { const m = (r.Date || '').substring(0, 7); if (m) months.add(m); });
+  const numMonths = months.size || 1;
+
+  // Compute actual spending per category from transactions
+  const actualSpending = {};
+  txns.forEach(r => {
+    const amt = parseNum(r.Amount);
+    const cat = r.Category || 'Other';
+    if (amt < 0 && !excludeCats.has(cat)) {
+      actualSpending[cat] = (actualSpending[cat] || 0) + Math.abs(amt);
+    }
+  });
+
+  // Build budget data from the Sheet's budget data (for monthly budget amounts)
+  // and scale by number of months in the filter
+  const budgetPerMonth = {};
+  rawBudgetData.forEach(r => {
+    const totalMonthsInSheet = rawMonthlyData.length || 1;
+    budgetPerMonth[r.Category] = parseNum(r['Total Budget']) / totalMonthsInSheet;
+  });
+
+  const allCats = [...new Set([...Object.keys(budgetPerMonth), ...Object.keys(actualSpending)])]
+    .filter(c => !excludeCats.has(c))
+    .sort();
+
+  const categories = [];
+  const budgets = [];
+  const actuals = [];
+  const diffs = [];
+  const statuses = [];
+
+  allCats.forEach(cat => {
+    const budget = (budgetPerMonth[cat] || 0) * numMonths;
+    const actual = actualSpending[cat] || 0;
+    if (budget === 0 && actual === 0) return;
+    categories.push(cat);
+    budgets.push(budget);
+    actuals.push(actual);
+    diffs.push(budget - actual);
+    statuses.push(budget - actual >= 0 ? 'Under Budget' : 'Over Budget');
+  });
+
+  if (!categories.length) return;
 
   createOrUpdateChart('chart-budget', 'bar', {
     labels: categories,
@@ -427,15 +475,14 @@ function renderBudgetStatus() {
   let html = '<div class="table-scroll"><table><thead><tr>';
   html += '<th>Category</th><th>Budget</th><th>Actual</th><th>Difference</th><th>Status</th>';
   html += '</tr></thead><tbody>';
-  data.forEach(r => {
-    const diff = parseNum(r.Difference) || 0;
-    const statusCls = r.Status === 'Under Budget' ? 'status-under' : 'status-over';
+  categories.forEach((cat, i) => {
+    const statusCls = statuses[i] === 'Under Budget' ? 'status-under' : 'status-over';
     html += `<tr>
-      <td>${r.Category}</td>
-      <td>${fmtNum(r['Total Budget'])}</td>
-      <td>${fmtNum(r['Total Actual'])}</td>
-      <td class="${diff >= 0 ? 'amount-positive' : 'amount-negative'}">${fmtNum(r.Difference)}</td>
-      <td class="${statusCls}">${r.Status}</td>
+      <td>${cat}</td>
+      <td>${fmtNum(budgets[i])}</td>
+      <td>${fmtNum(actuals[i])}</td>
+      <td class="${diffs[i] >= 0 ? 'amount-positive' : 'amount-negative'}">${fmtNum(diffs[i])}</td>
+      <td class="${statusCls}">${statuses[i]}</td>
     </tr>`;
   });
   html += '</tbody></table></div>';
