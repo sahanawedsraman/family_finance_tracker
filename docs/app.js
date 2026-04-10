@@ -262,8 +262,8 @@ function renderMonthlySummary() {
   createOrUpdateChart('chart-income-expenses', 'bar', {
     labels: months,
     datasets: [
-      { label: 'Income', data: income, backgroundColor: 'rgba(52, 211, 153, 0.7)' },
-      { label: 'Expenses', data: expenses, backgroundColor: 'rgba(248, 113, 113, 0.7)' },
+      { label: 'Income', data: income, backgroundColor: 'rgba(91, 168, 140, 0.7)' },
+      { label: 'Expenses', data: expenses, backgroundColor: 'rgba(212, 114, 106, 0.7)' },
     ],
   }, { plugins: { title: { display: true, text: 'Income vs Expenses', color: '#e4e6f0' } } });
 
@@ -271,7 +271,7 @@ function renderMonthlySummary() {
     labels: months,
     datasets: [{
       label: 'Net Savings', data: savings,
-      borderColor: '#6c63ff', backgroundColor: 'rgba(108, 99, 255, 0.1)',
+      borderColor: '#7c6fae', backgroundColor: 'rgba(124, 111, 174, 0.1)',
       fill: true, tension: 0.3,
     }],
   }, { plugins: { title: { display: true, text: 'Net Savings Trend', color: '#e4e6f0' } } });
@@ -320,8 +320,8 @@ function renderAnnualSummary() {
   createOrUpdateChart('chart-annual-income-expenses', 'bar', {
     labels: years,
     datasets: [
-      { label: 'Income', data: income, backgroundColor: 'rgba(52, 211, 153, 0.7)' },
-      { label: 'Expenses', data: expenses, backgroundColor: 'rgba(248, 113, 113, 0.7)' },
+      { label: 'Income', data: income, backgroundColor: 'rgba(91, 168, 140, 0.7)' },
+      { label: 'Expenses', data: expenses, backgroundColor: 'rgba(212, 114, 106, 0.7)' },
     ],
   }, { plugins: { title: { display: true, text: 'Annual Income vs Expenses', color: '#e4e6f0' } } });
 
@@ -329,7 +329,7 @@ function renderAnnualSummary() {
     labels: years,
     datasets: [{
       label: 'Net Savings', data: savings,
-      backgroundColor: savings.map(v => v >= 0 ? 'rgba(52, 211, 153, 0.7)' : 'rgba(248, 113, 113, 0.7)'),
+      backgroundColor: savings.map(v => v >= 0 ? 'rgba(91, 168, 140, 0.7)' : 'rgba(212, 114, 106, 0.7)'),
     }],
   }, { plugins: { title: { display: true, text: 'Annual Net Savings', color: '#e4e6f0' } } });
 
@@ -492,8 +492,8 @@ function renderBudgetStatus() {
   createOrUpdateChart('chart-budget', 'bar', {
     labels: categories,
     datasets: [
-      { label: 'Budget', data: budgets, backgroundColor: 'rgba(52, 211, 153, 0.7)' },
-      { label: 'Actual', data: actuals, backgroundColor: 'rgba(248, 113, 113, 0.7)' },
+      { label: 'Budget', data: budgets, backgroundColor: 'rgba(91, 168, 140, 0.7)' },
+      { label: 'Actual', data: actuals, backgroundColor: 'rgba(212, 114, 106, 0.7)' },
     ],
   }, {
     indexAxis: 'y',
@@ -678,8 +678,8 @@ function renderTransactionTable(data) {
 
 // ── Chart Helpers ──
 
-Chart.defaults.color = '#8b8fa3';
-Chart.defaults.borderColor = '#2e3345';
+Chart.defaults.color = '#8a857e';
+Chart.defaults.borderColor = '#e8e4de';
 
 function createOrUpdateChart(canvasId, type, data, extraOpts = {}) {
   const ctx = document.getElementById(canvasId);
@@ -692,9 +692,9 @@ function createOrUpdateChart(canvasId, type, data, extraOpts = {}) {
 
 function generateColors(count) {
   const palette = [
-    '#6c63ff', '#34d399', '#f87171', '#fbbf24', '#60a5fa',
-    '#a78bfa', '#f472b6', '#fb923c', '#2dd4bf', '#e879f9',
-    '#84cc16', '#38bdf8', '#f43f5e', '#8b5cf6', '#14b8a6',
+    '#7c6fae', '#5ba88c', '#d4726a', '#c9a84c', '#6a9ec0',
+    '#b08dcc', '#e8918a', '#8bb5a2', '#d4a76a', '#7eb5d6',
+    '#a3c47a', '#c08daa', '#e0b86a', '#6aafb5', '#c47a8d',
   ];
   return Array.from({ length: count }, (_, i) => palette[i % palette.length]);
 }
@@ -716,24 +716,24 @@ function fmtNum(val) {
 
 function toggleTheme() {
   const html = document.documentElement;
-  const current = html.getAttribute('data-theme');
-  const next = current === 'light' ? '' : 'light';
-  if (next) {
-    html.setAttribute('data-theme', 'light');
-  } else {
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  if (isDark) {
     html.removeAttribute('data-theme');
+    document.getElementById('btn-theme').textContent = '🌙';
+    localStorage.setItem('theme', 'light');
+  } else {
+    html.setAttribute('data-theme', 'dark');
+    document.getElementById('btn-theme').textContent = '☀️';
+    localStorage.setItem('theme', 'dark');
   }
-  document.getElementById('btn-theme').textContent = next === 'light' ? '☀️' : '🌙';
-  localStorage.setItem('theme', next || 'dark');
-  // Re-render charts with new colors
   if (accessToken) applyFilters();
 }
 
-// Restore saved theme
+// Restore saved theme (default is light)
 (function() {
   const saved = localStorage.getItem('theme');
-  if (saved === 'light') {
-    document.documentElement.setAttribute('data-theme', 'light');
+  if (saved === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
     const btn = document.getElementById('btn-theme');
     if (btn) btn.textContent = '☀️';
   }
@@ -773,11 +773,11 @@ function renderSparklines() {
     const exp = Math.abs(parseNum(r['Total Expenses']) || 0);
     return inc > 0 ? ((inc - exp) / inc * 100) : 0;
   });
-  renderSparkline('spark-savings', months.slice(-6), '#6c63ff');
+  renderSparkline('spark-savings', months.slice(-6), '#7c6fae');
 
   // Spending sparkline
   const spending = rawMonthlyData.map(r => Math.abs(parseNum(r['Total Expenses']) || 0));
-  renderSparkline('spark-spending', spending.slice(-6), '#f87171');
+  renderSparkline('spark-spending', spending.slice(-6), '#d4726a');
 }
 
 // ── Category vs Last Month ──
@@ -945,7 +945,7 @@ function renderIncomeBreakdown() {
   const data = labels.map(k => buckets[k]);
   if (!data.length) return;
 
-  const colors = ['#34d399', '#f87171', '#6c63ff', '#fbbf24', '#60a5fa'];
+  const colors = ['#34d399', '#d4726a', '#7c6fae', '#fbbf24', '#60a5fa'];
   createOrUpdateChart('chart-income-breakdown', 'doughnut', {
     labels,
     datasets: [{ data, backgroundColor: colors.slice(0, labels.length) }],
