@@ -359,7 +359,7 @@ function renderAnnualSummary() {
 // ── Category Breakdown ──
 
 function renderCategoryBreakdown() {
-  const excludeCats = new Set(['Income', 'Taxes', 'Retirement', 'Investment', 'Transfer']);
+  const excludeCats = new Set(['Income', 'Taxes', 'Retirement', 'Investment', 'Transfer', 'Healthcare', 'Utilities']);
 
   // Build category data from transactions
   const prefix = getFilteredMonth();
@@ -435,7 +435,7 @@ function renderCategoryBreakdown() {
 function renderBudgetStatus() {
   if (!rawBudgetData.length) return;
 
-  const excludeCats = new Set(['Income', 'Taxes', 'Retirement', 'Investment', 'Transfer']);
+  const excludeCats = new Set(['Income', 'Taxes', 'Retirement', 'Investment', 'Transfer', 'Healthcare', 'Utilities']);
   const prefix = getFilteredMonth();
 
   // Get filtered transactions
@@ -833,7 +833,7 @@ function renderSpendingPace() {
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 
   const monthTxns = rawTransactionData.filter(r => (r.Date || '').startsWith(currentMonth));
-  const excludeCats = new Set(['Income', 'Taxes', 'Retirement', 'Investment', 'Transfer']);
+  const excludeCats = new Set(['Income', 'Taxes', 'Retirement', 'Investment', 'Transfer', 'Healthcare', 'Utilities']);
   const spent = monthTxns.reduce((s, r) => {
     const amt = parseNum(r.Amount);
     const cat = r.Category || 'Other';
@@ -862,7 +862,7 @@ function renderBudgetProgress() {
   const container = document.getElementById('budget-progress-container');
   if (!container || !rawBudgetData.length) return;
 
-  const excludeCats = new Set(['Income', 'Taxes', 'Retirement', 'Investment', 'Transfer']);
+  const excludeCats = new Set(['Income', 'Taxes', 'Retirement', 'Investment', 'Transfer', 'Healthcare', 'Utilities']);
   const prefix = getFilteredMonth();
   const txns = prefix
     ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))

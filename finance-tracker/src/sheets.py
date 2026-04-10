@@ -44,7 +44,7 @@ ALL_CATEGORIES = [
 MANUAL_ENTRY_CATEGORIES = ["Gross Pay", "Taxes", "Retirement", "Benefits"]
 
 # Categories excluded from budget tracking
-BUDGET_EXCLUDED_CATEGORIES = {"Income", "Taxes", "Retirement", "Investment", "Transfer"}
+BUDGET_EXCLUDED_CATEGORIES = {"Income", "Taxes", "Retirement", "Investment", "Transfer", "Healthcare", "Utilities"}
 
 
 # ── Core helpers ──
