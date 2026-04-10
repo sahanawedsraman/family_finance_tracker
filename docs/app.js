@@ -326,17 +326,14 @@ function renderAnnualSummary() {
 // ── Category Breakdown ──
 
 function renderCategoryBreakdown() {
-  const container = document.getElementById('tab-categories');
-  const chartRow = container.querySelector('.chart-row');
   const excludeCats = new Set(['Income', 'Taxes', 'Retirement', 'Investment', 'Transfer']);
 
-  // Build category data from transactions (always available)
+  // Build category data from transactions
   const prefix = getFilteredMonth();
   const txns = prefix
     ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
     : rawTransactionData;
 
-  // Aggregate spending by category (negative amounts only)
   const catTotals = {};
   const catByMonth = {};
   txns.forEach(r => {
@@ -353,15 +350,31 @@ function renderCategoryBreakdown() {
   });
 
   const categories = Object.keys(catTotals).sort((a, b) => catTotals[b] - catTotals[a]);
+
+  // Render category chips
+  const chipsContainer = document.getElementById('category-chips-container');
   if (!categories.length) {
-    chartRow.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem">No spending data found.</p>';
+    chipsContainer.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem">No spending data found.</p>';
     return;
   }
 
   const colors = generateColors(categories.length);
-  const totals = categories.map(c => catTotals[c]);
+  const totalSpending = Object.values(catTotals).reduce((a, b) => a + b, 0);
+
+  let chipsHtml = '<div class="top-cats-row" style="margin-bottom:1.5rem">';
+  categories.forEach((cat, i) => {
+    const pct = totalSpending > 0 ? (catTotals[cat] / totalSpending * 100).toFixed(1) : 0;
+    chipsHtml += `<div class="top-cat-chip" style="border-left: 3px solid ${colors[i]}">
+      <span class="top-cat-name">${cat}</span>
+      <span class="top-cat-amt">${fmtNum(catTotals[cat])}</span>
+      <span style="font-size:0.7rem;color:var(--text-muted)">${pct}%</span>
+    </div>`;
+  });
+  chipsHtml += '</div>';
+  chipsContainer.innerHTML = chipsHtml;
 
   // Pie chart
+  const totals = categories.map(c => catTotals[c]);
   createOrUpdateChart('chart-category-pie', 'pie', {
     labels: categories,
     datasets: [{ data: totals, backgroundColor: colors }],
@@ -732,32 +745,29 @@ function renderCategoryComparison() {
 
 function initMobileNav() {
   document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      // Update mobile nav active state
-      document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      // Also update desktop tabs
-      const tab = btn.dataset.tab;
-      document.querySelectorAll('.tab').forEach(t => {
-        t.classList.toggle('active', t.dataset.tab === tab);
-        t.setAttribute('aria-selected', t.dataset.tab === tab ? 'true' : 'false');
-      });
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      document.getElementById('tab-' + tab).classList.add('active');
-    });
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
 }
 
 // ── Tab Navigation ──
 
+function switchTab(tabName) {
+  document.querySelectorAll('.tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
+
+  const tabBtn = document.querySelector(`.tab[data-tab="${tabName}"]`);
+  if (tabBtn) { tabBtn.classList.add('active'); tabBtn.setAttribute('aria-selected', 'true'); }
+  document.getElementById('tab-' + tabName).classList.add('active');
+
+  // Resize charts in the newly visible tab so they render correctly
+  setTimeout(() => {
+    Object.values(charts).forEach(c => c.resize());
+  }, 50);
+}
+
 document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    tab.classList.add('active');
-    tab.setAttribute('aria-selected', 'true');
-    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
-  });
+  tab.addEventListener('click', () => switchTab(tab.dataset.tab));
 });
 
 // ── Init ──

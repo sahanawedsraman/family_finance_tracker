@@ -209,9 +209,15 @@ header h1 { font-size: 1.3rem; }
 
 .chart-single { max-width: 800px; margin-bottom: 1.5rem; }
 
-canvas {
+.chart-wrapper {
   background: var(--surface);
   border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+canvas {
+  background: transparent;
   border-radius: var(--radius);
   padding: 1rem;
   width: 100% !important;
