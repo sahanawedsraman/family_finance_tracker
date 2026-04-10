@@ -23,7 +23,13 @@ from src.drive import (
 from src.logging_config import RunSummary, setup_logging
 from src.metrics import compute_kpis, compute_monthly_metrics, compute_annual_metrics
 from src.parser import parse_file
-from src.sheets import write_to_sheet
+from src.models import Transaction
+from src.sheets import (
+    create_or_get_sheet,
+    read_existing_transactions,
+    write_to_sheet,
+    write_transactions_tab,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -189,9 +195,8 @@ def run_pipeline(config_path="config.yaml"):
         print("         2025-01-15 | Federal Tax | -800 | Taxes | Raman")
         print("         2025-01-15 | 401k | -500 | Retirement | Raman\n")
 
-    # Step 8: Categorize transactions
+    # Step 8: Categorize only NEW transactions (not ones already in the Sheet)
     if all_transactions and config.gemini and config.gemini.enabled:
-        # Use Gemini for smart categorization
         from src.llm_parser import categorize_with_gemini
 
         categorize_with_gemini(
@@ -200,7 +205,6 @@ def run_pipeline(config_path="config.yaml"):
             model=config.gemini.model,
             fallback_models=config.gemini.fallback_models,
         )
-        # Refine any remaining "Other" with keyword matching if available
         if config.categories:
             from src.categorizer import match_category
 
@@ -210,21 +214,66 @@ def run_pipeline(config_path="config.yaml"):
     elif all_transactions:
         categorize_transactions(all_transactions, config.categories)
 
-    # Step 9: Compute metrics
+    # Step 9: Write transactions (merges with existing, preserves manual edits)
+    try:
+        spreadsheet_id = create_or_get_sheet(
+            sheets_service, config.sheet_id, config.sheet_name
+        )
+
+        write_transactions_tab(sheets_service, spreadsheet_id, all_transactions)
+
+        # Step 9b: Read back ALL merged transactions (includes manual category edits)
+        from datetime import datetime as _dt
+
+        merged_rows = read_existing_transactions(sheets_service, spreadsheet_id)
+        all_merged_txns = []
+        for r in merged_rows:
+            date_str = r.get("Date", "")
+            if not date_str:
+                continue
+            try:
+                txn_date = _dt.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
+                continue
+            try:
+                amount = float(str(r.get("Amount", 0)).replace(",", "").replace("$", ""))
+            except ValueError:
+                continue
+            from src.models import Transaction as _Txn
+
+            all_merged_txns.append(Transaction(
+                date=txn_date,
+                description=r.get("Description", ""),
+                amount=amount,
+                category=r.get("Category", "Other"),
+                person=r.get("Person", "Unknown"),
+                source_file=r.get("Source File", ""),
+                transaction_type=r.get("Type", ""),
+            ))
+
+        logger.info("Read back %d merged transactions for metrics", len(all_merged_txns))
+
+    except Exception as e:
+        msg = f"Failed to write/read transactions: {e}"
+        logger.error(msg)
+        summary.add_error(msg)
+        return summary
+
+    # Step 10: Compute metrics from merged transactions
     person_names = [p.name for p in config.persons]
     monthly_metrics = compute_monthly_metrics(
-        all_transactions, config.budgets, person_names
+        all_merged_txns, config.budgets, person_names
     )
     annual_metrics = compute_annual_metrics(monthly_metrics, person_names)
     kpis = compute_kpis(monthly_metrics, config.budgets)
 
-    # Step 10: Write to Google Sheets
+    # Step 11: Write remaining tabs
     try:
         sheet_id = write_to_sheet(
             service=sheets_service,
-            sheet_id=config.sheet_id,
+            sheet_id=spreadsheet_id,
             sheet_name=config.sheet_name,
-            transactions=all_transactions,
+            transactions=[],  # empty — already written in step 9
             monthly_metrics=monthly_metrics,
             annual_metrics=annual_metrics,
             kpis=kpis,

@@ -40,5 +40,6 @@ const CONFIG = {
     CATEGORY_BREAKDOWN: 'Category Breakdown',
     KPIS: 'KPIs',
     BUDGET_STATUS: 'Budget Status',
+    METADATA: 'Metadata',
   },
 };

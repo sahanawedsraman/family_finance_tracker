@@ -88,13 +88,14 @@ function parseRows(rows) {
 
 async function loadAllData() {
   try {
-    const [kpiRows, monthlyRows, annualRows, categoryRows, budgetRows, txnRows] = await Promise.all([
+    const [kpiRows, monthlyRows, annualRows, categoryRows, budgetRows, txnRows, metaRows] = await Promise.all([
       fetchSheet(CONFIG.TABS.KPIS),
       fetchSheet(CONFIG.TABS.MONTHLY_SUMMARY),
       fetchSheet(CONFIG.TABS.ANNUAL_SUMMARY),
       fetchSheet(CONFIG.TABS.CATEGORY_BREAKDOWN),
       fetchSheet(CONFIG.TABS.BUDGET_STATUS),
       fetchSheet(CONFIG.TABS.TRANSACTIONS),
+      fetchSheet(CONFIG.TABS.METADATA),
     ]);
 
     rawKpiRows = kpiRows;
@@ -103,14 +104,11 @@ async function loadAllData() {
     rawCategoryRows = categoryRows;
     rawBudgetData = parseRows(budgetRows);
     rawTransactionData = parseRows(txnRows);
-    console.log('Data loaded:', {
-      kpis: rawKpiRows?.length,
-      monthly: rawMonthlyData?.length,
-      annual: rawAnnualData?.length,
-      categories: rawCategoryRows?.length,
-      budget: rawBudgetData?.length,
-      transactions: rawTransactionData?.length,
-    });
+
+    // Display last updated
+    const metaData = parseRows(metaRows);
+    const lastUpdated = metaData.find(r => r.Key === 'Last Updated');
+    document.getElementById('last-updated').textContent = lastUpdated ? lastUpdated.Value : 'Unknown';
 
     populateYearFilter();
     setupFilterListeners();
@@ -328,7 +326,6 @@ function renderAnnualSummary() {
 
 function renderCategoryBreakdown() {
   const container = document.getElementById('tab-categories');
-  console.log('Category rows:', rawCategoryRows?.length, rawCategoryRows);
   if (!rawCategoryRows || rawCategoryRows.length < 2) {
     container.querySelector('.chart-row').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem">No category data available. Run the CLI to process transactions.</p>';
     return;

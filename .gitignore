@@ -22,6 +22,8 @@ logs/
 .env
 venv/
 .venv/
+.kiro/
+.vscode/
 
 # OS
 .DS_Store

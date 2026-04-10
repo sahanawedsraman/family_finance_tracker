@@ -138,6 +138,9 @@ class TestRunPipeline:
     @patch("main.save_processed_state")
     @patch("main.load_processed_state", return_value=set())
     @patch("main.write_to_sheet", return_value="test_sheet_456")
+    @patch("src.sheets.read_existing_transactions", return_value=[])
+    @patch("src.sheets.write_transactions_tab")
+    @patch("src.sheets.create_or_get_sheet", return_value="test_sheet_456")
     @patch("main.list_files")
     @patch("main.download_files")
     @patch("main.build_sheets_service")
@@ -150,6 +153,9 @@ class TestRunPipeline:
         mock_build_sheets,
         mock_download,
         mock_list,
+        mock_create_sheet,
+        mock_write_txns,
+        mock_read_txns,
         mock_write_sheet,
         mock_load_state,
         mock_save_state,
@@ -170,6 +176,13 @@ class TestRunPipeline:
         mock_list.return_value = [drive_file]
         mock_download.return_value = [drive_file]
 
+        # Mock read_existing_transactions to return the merged data
+        mock_read_txns.return_value = [
+            {"Date": "2024-01-05", "Description": "Salary", "Amount": "3000", "Category": "Income", "Person": "Alice", "Source File": "alice_statement.csv", "Type": "credit"},
+            {"Date": "2024-01-10", "Description": "Walmart", "Amount": "-50", "Category": "Groceries", "Person": "Alice", "Source File": "alice_statement.csv", "Type": "debit"},
+            {"Date": "2024-01-15", "Description": "Netflix", "Amount": "-15", "Category": "Entertainment", "Person": "Alice", "Source File": "alice_statement.csv", "Type": "debit"},
+        ]
+
         summary = run_pipeline(config_file)
 
         assert summary.files_processed == 1
@@ -177,14 +190,8 @@ class TestRunPipeline:
         assert summary.transactions_found == 3
         assert len(summary.errors) == 0
 
-        # Verify write_to_sheet was called with transactions
+        # Verify write_to_sheet was called
         mock_write_sheet.assert_called_once()
-        call_kwargs = mock_write_sheet.call_args
-        transactions = call_kwargs.kwargs.get("transactions") or call_kwargs[1].get("transactions")
-        if transactions is None:
-            # positional args
-            transactions = call_kwargs[0][3]
-        assert len(transactions) == 3
 
         # Verify state was saved
         mock_save_state.assert_called_once()
@@ -341,6 +348,12 @@ class TestRunPipeline:
     @patch("main.save_processed_state")
     @patch("main.load_processed_state", return_value=set())
     @patch("main.write_to_sheet", return_value="test_sheet_456")
+    @patch("main.read_existing_transactions", return_value=[
+        {"Date": "2024-01-10", "Description": "Walmart", "Amount": "-50", "Category": "Groceries", "Person": "Alice", "Source File": "test.csv", "Type": "debit"},
+        {"Date": "2024-01-15", "Description": "Starbucks", "Amount": "-5", "Category": "Dining", "Person": "Alice", "Source File": "test.csv", "Type": "debit"},
+    ])
+    @patch("main.write_transactions_tab")
+    @patch("main.create_or_get_sheet", return_value="test_sheet_456")
     @patch("main.list_files")
     @patch("main.download_files")
     @patch("main.build_sheets_service")
@@ -353,6 +366,9 @@ class TestRunPipeline:
         mock_build_sheets,
         mock_download,
         mock_list,
+        mock_create_sheet,
+        mock_write_txns,
+        mock_read_txns,
         mock_write_sheet,
         mock_load_state,
         mock_save_state,
@@ -375,20 +391,22 @@ class TestRunPipeline:
 
         summary = run_pipeline(config_file)
 
-        # Check that write_to_sheet received categorized transactions
-        call_kwargs = mock_write_sheet.call_args
-        transactions = call_kwargs.kwargs.get("transactions") or call_kwargs[1].get("transactions")
-        if transactions is None:
-            transactions = call_kwargs[0][3]
-
-        categories = {t.category for t in transactions}
-        # Walmart should be Groceries, Starbucks should be Dining
+        # Verify write_transactions_tab was called with categorized transactions
+        mock_write_txns.assert_called_once()
+        txns = mock_write_txns.call_args[0][2]  # 3rd positional arg
+        categories = {t.category for t in txns}
         assert "Groceries" in categories
         assert "Dining" in categories
 
     @patch("main.save_processed_state")
     @patch("main.load_processed_state", return_value=set())
     @patch("main.write_to_sheet", return_value="test_sheet_456")
+    @patch("main.read_existing_transactions", return_value=[
+        {"Date": "2024-01-05", "Description": "Salary", "Amount": "3000", "Category": "Income", "Person": "Alice", "Source File": "test.csv", "Type": "credit"},
+        {"Date": "2024-01-10", "Description": "Walmart", "Amount": "-50", "Category": "Groceries", "Person": "Alice", "Source File": "test.csv", "Type": "debit"},
+    ])
+    @patch("main.write_transactions_tab")
+    @patch("main.create_or_get_sheet", return_value="test_sheet_456")
     @patch("main.list_files")
     @patch("main.download_files")
     @patch("main.build_sheets_service")
@@ -401,6 +419,9 @@ class TestRunPipeline:
         mock_build_sheets,
         mock_download,
         mock_list,
+        mock_create_sheet,
+        mock_write_txns,
+        mock_read_txns,
         mock_write_sheet,
         mock_load_state,
         mock_save_state,

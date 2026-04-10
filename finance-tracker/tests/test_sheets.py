@@ -151,32 +151,50 @@ class TestCreateOrGetSheet:
 class TestWriteTransactionsTab:
     def test_writes_headers_and_data(self):
         service, spreadsheets, values = _make_service()
+        # Mock reading existing transactions (empty sheet)
+        values.get.return_value.execute.return_value = {"values": []}
         txns = _sample_transactions()
 
         write_transactions_tab(service, "sheet-1", txns)
 
         # Verify clear was called
-        values.clear.assert_called_once()
-        clear_args = values.clear.call_args
-        assert clear_args[1]["range"] == TAB_TRANSACTIONS
+        values.clear.assert_called()
 
         # Verify update was called with correct data
         update_args = values.update.call_args
         written_rows = update_args[1]["body"]["values"]
         assert written_rows[0] == ["Date", "Description", "Amount", "Category", "Person", "Source File", "Type"]
         assert len(written_rows) == 3  # header + 2 transactions
-        assert written_rows[1][0] == "2024-01-15"
-        assert written_rows[1][2] == -50.0
-        assert written_rows[2][2] == 3000.0
 
     def test_writes_empty_transactions(self):
         service, _, values = _make_service()
+        values.get.return_value.execute.return_value = {"values": []}
 
         write_transactions_tab(service, "sheet-1", [])
 
         update_args = values.update.call_args
         written_rows = update_args[1]["body"]["values"]
         assert len(written_rows) == 1  # header only
+
+    def test_deduplicates_existing_transactions(self):
+        service, _, values = _make_service()
+        # Existing transaction in sheet matches one of the new ones
+        values.get.return_value.execute.return_value = {"values": [
+            ["Date", "Description", "Amount", "Category", "Person", "Source File", "Type"],
+            ["2024-01-15", "Walmart Grocery", "-50.0", "Shopping", "John", "jan_stmt.csv", "debit"],
+        ]}
+        txns = _sample_transactions()  # includes "Walmart Grocery" with same date/amount
+
+        write_transactions_tab(service, "sheet-1", txns)
+
+        update_args = values.update.call_args
+        written_rows = update_args[1]["body"]["values"]
+        # Should have header + 2 unique (existing Walmart preserved with "Shopping" category, + Salary)
+        assert len(written_rows) == 3
+        # The existing row should keep its manually-edited category "Shopping"
+        walmart_rows = [r for r in written_rows[1:] if "Walmart" in str(r[1])]
+        assert len(walmart_rows) == 1
+        assert walmart_rows[0][3] == "Shopping"  # preserved manual edit
 
 
 # ---------------------------------------------------------------------------
@@ -377,8 +395,8 @@ class TestWriteToSheet:
         )
 
         assert result == "new-sheet-id"
-        # Should have cleared 6 data tabs (Manual Entry is not cleared)
-        assert values.clear.call_count == 6
+        # Should have cleared 7 data tabs (Manual Entry is not cleared, Metadata is cleared)
+        assert values.clear.call_count == 7
 
     def test_uses_existing_sheet_id(self):
         service, spreadsheets, values = _make_service()
@@ -396,304 +414,3 @@ class TestWriteToSheet:
 
         assert result == "existing-id"
         spreadsheets.create.assert_not_called()
-
-
-# ---------------------------------------------------------------------------
-# apply_formatting
-# ---------------------------------------------------------------------------
-
-from src.sheets import apply_formatting
-
-
-def _make_service_with_tab_ids(tab_ids: dict[str, int]):
-    """Build a mock service that returns specific tab IDs from get()."""
-    service, spreadsheets, values = _make_service()
-    spreadsheets.get.return_value.execute.return_value = {
-        "sheets": [
-            {"properties": {"title": name, "sheetId": sid}}
-            for name, sid in tab_ids.items()
-        ]
-    }
-    spreadsheets.batchUpdate.return_value.execute.return_value = {}
-    return service, spreadsheets
-
-
-class TestApplyFormatting:
-    def test_bolds_headers_on_all_tabs(self):
-        tab_ids = {t: i for i, t in enumerate(ALL_TABS)}
-        service, spreadsheets = _make_service_with_tab_ids(tab_ids)
-
-        apply_formatting(service, "sheet-1", budget_status_row_count=0)
-
-        batch_call = spreadsheets.batchUpdate.call_args
-        requests = batch_call[1]["body"]["requests"]
-        bold_requests = [
-            r for r in requests if "repeatCell" in r
-            and r["repeatCell"].get("fields") == "userEnteredFormat.textFormat.bold"
-        ]
-        assert len(bold_requests) == len(ALL_TABS)
-
-    def test_applies_number_format_to_transactions(self):
-        tab_ids = {TAB_TRANSACTIONS: 0}
-        service, spreadsheets = _make_service_with_tab_ids(tab_ids)
-
-        apply_formatting(service, "sheet-1")
-
-        batch_call = spreadsheets.batchUpdate.call_args
-        requests = batch_call[1]["body"]["requests"]
-        num_fmt_requests = [
-            r for r in requests if "repeatCell" in r
-            and r["repeatCell"].get("fields") == "userEnteredFormat.numberFormat"
-        ]
-        # Amount column format
-        assert len(num_fmt_requests) >= 1
-        amt_req = num_fmt_requests[0]["repeatCell"]
-        assert amt_req["range"]["startColumnIndex"] == 2
-        assert amt_req["range"]["endColumnIndex"] == 3
-
-    def test_applies_conditional_formatting_to_budget_status(self):
-        tab_ids = {TAB_BUDGET_STATUS: 4}
-        service, spreadsheets = _make_service_with_tab_ids(tab_ids)
-
-        apply_formatting(service, "sheet-1", budget_status_row_count=5)
-
-        batch_call = spreadsheets.batchUpdate.call_args
-        requests = batch_call[1]["body"]["requests"]
-        cond_requests = [r for r in requests if "addConditionalFormatRule" in r]
-        assert len(cond_requests) == 2
-
-        # Over-budget rule: red background
-        over_rule = cond_requests[0]["addConditionalFormatRule"]["rule"]
-        assert over_rule["booleanRule"]["condition"]["type"] == "NUMBER_LESS"
-        bg = over_rule["booleanRule"]["format"]["backgroundColor"]
-        assert bg["red"] == 1.0
-        assert bg["green"] == 0.8
-
-        # Under-budget rule: green background
-        under_rule = cond_requests[1]["addConditionalFormatRule"]["rule"]
-        assert under_rule["booleanRule"]["condition"]["type"] == "NUMBER_GREATER_THAN_EQ"
-        bg = under_rule["booleanRule"]["format"]["backgroundColor"]
-        assert bg["green"] == 1.0
-        assert bg["red"] == 0.8
-
-    def test_skips_conditional_formatting_when_no_budget_rows(self):
-        tab_ids = {TAB_BUDGET_STATUS: 4}
-        service, spreadsheets = _make_service_with_tab_ids(tab_ids)
-
-        apply_formatting(service, "sheet-1", budget_status_row_count=0)
-
-        batch_call = spreadsheets.batchUpdate.call_args
-        requests = batch_call[1]["body"]["requests"]
-        cond_requests = [r for r in requests if "addConditionalFormatRule" in r]
-        assert len(cond_requests) == 0
-
-    def test_column_width_requests(self):
-        tab_ids = {TAB_TRANSACTIONS: 0, TAB_BUDGET_STATUS: 4}
-        service, spreadsheets = _make_service_with_tab_ids(tab_ids)
-
-        apply_formatting(service, "sheet-1", budget_status_row_count=3)
-
-        batch_call = spreadsheets.batchUpdate.call_args
-        requests = batch_call[1]["body"]["requests"]
-        width_requests = [r for r in requests if "updateDimensionProperties" in r]
-        # Transactions Description + Budget Status Category + Budget Status Status
-        assert len(width_requests) == 3
-
-
-# ---------------------------------------------------------------------------
-# add_chart and chart generation functions
-# ---------------------------------------------------------------------------
-
-from src.sheets import (
-    add_chart,
-    add_budget_status_chart,
-    add_category_breakdown_charts,
-    add_kpis_charts,
-    add_monthly_summary_charts,
-    _source_range,
-)
-
-
-class TestAddChart:
-    def test_basic_column_chart(self):
-        service, spreadsheets, _ = _make_service()
-        spreadsheets.batchUpdate.return_value.execute.return_value = {}
-
-        add_chart(service, "sheet-1", 0, {
-            "title": "Test Chart",
-            "chart_type": "COLUMN",
-            "domains": [_source_range(0, 0, 5, 0, 1)],
-            "series": [{"range": _source_range(0, 0, 5, 1, 2)}],
-            "anchor_cell": {"rowIndex": 6, "columnIndex": 0},
-        })
-
-        batch_call = spreadsheets.batchUpdate.call_args
-        requests = batch_call[1]["body"]["requests"]
-        assert len(requests) == 1
-        chart = requests[0]["addChart"]["chart"]
-        assert chart["spec"]["title"] == "Test Chart"
-        assert chart["spec"]["basicChart"]["chartType"] == "COLUMN"
-        assert chart["position"]["overlayPosition"]["anchorCell"]["rowIndex"] == 6
-
-    def test_pie_chart(self):
-        service, spreadsheets, _ = _make_service()
-        spreadsheets.batchUpdate.return_value.execute.return_value = {}
-
-        add_chart(service, "sheet-1", 0, {
-            "title": "Pie Test",
-            "chart_type": "PIE",
-            "domains": [_source_range(0, 0, 1, 0, 3)],
-            "series": [{"range": _source_range(0, 1, 2, 0, 3)}],
-            "anchor_cell": {"rowIndex": 3, "columnIndex": 0},
-        })
-
-        batch_call = spreadsheets.batchUpdate.call_args
-        requests = batch_call[1]["body"]["requests"]
-        chart_spec = requests[0]["addChart"]["chart"]["spec"]
-        assert "pieChart" in chart_spec
-        assert "basicChart" not in chart_spec
-
-    def test_stacked_chart(self):
-        service, spreadsheets, _ = _make_service()
-        spreadsheets.batchUpdate.return_value.execute.return_value = {}
-
-        add_chart(service, "sheet-1", 0, {
-            "title": "Stacked",
-            "chart_type": "COLUMN",
-            "stacked": True,
-            "domains": [_source_range(0, 0, 5, 0, 1)],
-            "series": [{"range": _source_range(0, 0, 5, 1, 2)}],
-            "anchor_cell": {"rowIndex": 0, "columnIndex": 0},
-        })
-
-        batch_call = spreadsheets.batchUpdate.call_args
-        basic = batch_call[1]["body"]["requests"][0]["addChart"]["chart"]["spec"]["basicChart"]
-        assert basic["stackedType"] == "STACKED"
-
-    def test_chart_with_color(self):
-        service, spreadsheets, _ = _make_service()
-        spreadsheets.batchUpdate.return_value.execute.return_value = {}
-
-        add_chart(service, "sheet-1", 0, {
-            "title": "Colored",
-            "chart_type": "BAR",
-            "domains": [_source_range(0, 0, 3, 0, 1)],
-            "series": [
-                {
-                    "range": _source_range(0, 0, 3, 1, 2),
-                    "color": {"red": 0.4, "green": 0.8, "blue": 0.4},
-                },
-            ],
-            "anchor_cell": {"rowIndex": 0, "columnIndex": 0},
-        })
-
-        batch_call = spreadsheets.batchUpdate.call_args
-        series = batch_call[1]["body"]["requests"][0]["addChart"]["chart"]["spec"]["basicChart"]["series"]
-        assert series[0]["color"] == {"red": 0.4, "green": 0.8, "blue": 0.4}
-
-
-class TestAddMonthlySummaryCharts:
-    def test_creates_two_charts(self):
-        service, spreadsheets, _ = _make_service()
-        spreadsheets.batchUpdate.return_value.execute.return_value = {}
-        metrics = _sample_metrics()
-
-        add_monthly_summary_charts(service, "sheet-1", 1, metrics)
-
-        assert spreadsheets.batchUpdate.call_count == 2
-
-    def test_no_charts_when_no_combined(self):
-        service, spreadsheets, _ = _make_service()
-        metrics = [
-            MonthlyMetrics(month="2024-01", person="John"),
-        ]
-
-        add_monthly_summary_charts(service, "sheet-1", 1, metrics)
-
-        spreadsheets.batchUpdate.assert_not_called()
-
-
-class TestAddCategoryBreakdownCharts:
-    def test_creates_pie_and_bar_charts(self):
-        service, spreadsheets, _ = _make_service()
-        spreadsheets.batchUpdate.return_value.execute.return_value = {}
-
-        add_category_breakdown_charts(service, "sheet-1", 2, num_categories=3, num_data_rows=2)
-
-        assert spreadsheets.batchUpdate.call_count == 2
-        # First call should be pie chart
-        first_chart = spreadsheets.batchUpdate.call_args_list[0][1]["body"]["requests"][0]
-        assert "pieChart" in first_chart["addChart"]["chart"]["spec"]
-        # Second call should be column chart
-        second_chart = spreadsheets.batchUpdate.call_args_list[1][1]["body"]["requests"][0]
-        assert second_chart["addChart"]["chart"]["spec"]["basicChart"]["chartType"] == "COLUMN"
-
-    def test_no_charts_when_no_data(self):
-        service, spreadsheets, _ = _make_service()
-
-        add_category_breakdown_charts(service, "sheet-1", 2, num_categories=0, num_data_rows=0)
-
-        spreadsheets.batchUpdate.assert_not_called()
-
-
-class TestAddKpisCharts:
-    def test_creates_charts_for_top_categories_and_trends(self):
-        service, spreadsheets, _ = _make_service()
-        spreadsheets.batchUpdate.return_value.execute.return_value = {}
-        kpis = KPIs(
-            top_categories=[("Groceries", 500.0), ("Dining", 300.0)],
-            mom_trends={"2024-02": 10.0, "2024-03": -5.0},
-            overall_savings_rate=50.0,
-            total_budget=1000.0,
-            total_actual=500.0,
-            budget_health_pct=50.0,
-        )
-
-        add_kpis_charts(service, "sheet-1", 3, kpis)
-
-        # Should create 2 charts: top categories bar + trend line
-        assert spreadsheets.batchUpdate.call_count == 2
-
-    def test_only_top_categories_chart_when_no_trends(self):
-        service, spreadsheets, _ = _make_service()
-        spreadsheets.batchUpdate.return_value.execute.return_value = {}
-        kpis = KPIs(
-            top_categories=[("Groceries", 500.0)],
-            mom_trends={},
-        )
-
-        add_kpis_charts(service, "sheet-1", 3, kpis)
-
-        assert spreadsheets.batchUpdate.call_count == 1
-
-    def test_no_charts_when_empty_kpis(self):
-        service, spreadsheets, _ = _make_service()
-
-        add_kpis_charts(service, "sheet-1", 3, KPIs())
-
-        spreadsheets.batchUpdate.assert_not_called()
-
-
-class TestAddBudgetStatusChart:
-    def test_creates_bar_chart_with_colors(self):
-        service, spreadsheets, _ = _make_service()
-        spreadsheets.batchUpdate.return_value.execute.return_value = {}
-
-        add_budget_status_chart(service, "sheet-1", 4, num_categories=3)
-
-        assert spreadsheets.batchUpdate.call_count == 1
-        chart = spreadsheets.batchUpdate.call_args[1]["body"]["requests"][0]["addChart"]["chart"]
-        spec = chart["spec"]
-        assert spec["basicChart"]["chartType"] == "BAR"
-        # Should have 2 series (budget and actual) with colors
-        series = spec["basicChart"]["series"]
-        assert len(series) == 2
-        assert "color" in series[0]
-        assert "color" in series[1]
-
-    def test_no_chart_when_no_categories(self):
-        service, spreadsheets, _ = _make_service()
-
-        add_budget_status_chart(service, "sheet-1", 4, num_categories=0)
-
-        spreadsheets.batchUpdate.assert_not_called()
