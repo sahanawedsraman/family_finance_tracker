@@ -23,6 +23,14 @@ function initAuth() {
       scope: CONFIG.SCOPES,
       callback: onTokenResponse,
     });
+
+    // Restore cached token
+    const cached = sessionStorage.getItem('finance_token');
+    if (cached) {
+      accessToken = cached;
+      showDashboard();
+      loadAllData();
+    }
   };
   document.head.appendChild(script);
 
@@ -40,12 +48,14 @@ function initAuth() {
 function onTokenResponse(resp) {
   if (resp.error) { console.error('Auth error:', resp); return; }
   accessToken = resp.access_token;
+  sessionStorage.setItem('finance_token', accessToken);
   showDashboard();
   loadAllData();
 }
 
 function signOut() {
   if (accessToken) { google.accounts.oauth2.revoke(accessToken, () => {}); accessToken = null; }
+  sessionStorage.removeItem('finance_token');
   showAuthScreen();
 }
 
@@ -68,6 +78,13 @@ async function fetchSheet(tab) {
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}/values/${range}?t=${cacheBust}`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' });
   if (!res.ok) {
+    if (res.status === 401) {
+      // Token expired — clear cache and show login
+      sessionStorage.removeItem('finance_token');
+      accessToken = null;
+      showAuthScreen();
+      throw new Error('Session expired. Please sign in again.');
+    }
     const err = await res.json();
     throw new Error(err.error?.message || `Failed to fetch ${tab}`);
   }
@@ -281,15 +298,24 @@ function renderMonthlySummary() {
 // ── Annual Summary ──
 
 function renderAnnualSummary() {
-  const yearFilter = document.getElementById('filter-year').value;
-  const data = yearFilter
-    ? rawAnnualData.filter(r => r.Year === yearFilter)
-    : rawAnnualData;
+  // Compute annual data from monthly summary (respects all filters)
+  const filtered = filterByPeriod(rawMonthlyData, 'Month');
 
-  const years = data.map(r => r.Year);
-  const income = data.map(r => parseNum(r['Total Income']) || 0);
-  const expenses = data.map(r => Math.abs(parseNum(r['Total Expenses']) || 0));
-  const savings = data.map(r => parseNum(r['Net Savings']) || 0);
+  // Group by year
+  const byYear = {};
+  filtered.forEach(r => {
+    const year = (r.Month || '').substring(0, 4);
+    if (!year) return;
+    if (!byYear[year]) byYear[year] = { income: 0, expenses: 0, months: 0 };
+    byYear[year].income += parseNum(r['Total Income']);
+    byYear[year].expenses += Math.abs(parseNum(r['Total Expenses']));
+    byYear[year].months++;
+  });
+
+  const years = Object.keys(byYear).sort();
+  const income = years.map(y => byYear[y].income);
+  const expenses = years.map(y => byYear[y].expenses);
+  const savings = years.map(y => byYear[y].income - byYear[y].expenses);
 
   createOrUpdateChart('chart-annual-income-expenses', 'bar', {
     labels: years,
@@ -311,16 +337,19 @@ function renderAnnualSummary() {
   let html = '<div class="table-scroll"><table><thead><tr>';
   html += '<th>Year</th><th>Income</th><th>Expenses</th><th>Net Savings</th><th>Savings Rate</th><th>Avg Monthly Spending</th>';
   html += '</tr></thead><tbody>';
-  data.forEach(r => {
-    const amt = parseNum(r['Net Savings']) || 0;
-    const cls = amt >= 0 ? 'amount-positive' : 'amount-negative';
+  years.forEach(y => {
+    const d = byYear[y];
+    const net = d.income - d.expenses;
+    const rate = d.income > 0 ? (net / d.income * 100) : 0;
+    const avgMonthly = d.months > 0 ? d.expenses / d.months : 0;
+    const cls = net >= 0 ? 'amount-positive' : 'amount-negative';
     html += `<tr>
-      <td>${r.Year}</td>
-      <td>${fmtNum(r['Total Income'])}</td>
-      <td>${fmtNum(Math.abs(parseNum(r['Total Expenses']) || 0))}</td>
-      <td class="${cls}">${fmtNum(r['Net Savings'])}</td>
-      <td>${r['Savings Rate (%)'] || '0'}%</td>
-      <td>${fmtNum(r['Avg Monthly Spending'])}</td>
+      <td>${y}</td>
+      <td>${fmtNum(d.income)}</td>
+      <td>${fmtNum(d.expenses)}</td>
+      <td class="${cls}">${fmtNum(net)}</td>
+      <td>${rate.toFixed(1)}%</td>
+      <td>${fmtNum(avgMonthly)}</td>
     </tr>`;
   });
   html += '</tbody></table></div>';
@@ -833,10 +862,33 @@ function renderBudgetProgress() {
   const container = document.getElementById('budget-progress-container');
   if (!container || !rawBudgetData.length) return;
 
+  const excludeCats = new Set(['Income', 'Taxes', 'Retirement', 'Investment', 'Transfer']);
+  const prefix = getFilteredMonth();
+  const txns = prefix
+    ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
+    : rawTransactionData;
+
+  const months = new Set();
+  txns.forEach(r => { const m = (r.Date || '').substring(0, 7); if (m) months.add(m); });
+  const numMonths = months.size || 1;
+
+  const actualSpending = {};
+  txns.forEach(r => {
+    const amt = parseNum(r.Amount);
+    const cat = r.Category || 'Other';
+    if (amt < 0 && !excludeCats.has(cat)) {
+      actualSpending[cat] = (actualSpending[cat] || 0) + Math.abs(amt);
+    }
+  });
+
+  const totalMonthsInSheet = rawMonthlyData.length || 1;
+
   let html = '';
   rawBudgetData.forEach(r => {
-    const budget = parseNum(r['Total Budget']);
-    const actual = parseNum(r['Total Actual']);
+    if (excludeCats.has(r.Category)) return;
+    const monthlyBudget = parseNum(r['Total Budget']) / totalMonthsInSheet;
+    const budget = monthlyBudget * numMonths;
+    const actual = actualSpending[r.Category] || 0;
     if (budget <= 0) return;
     const pct = Math.min((actual / budget) * 100, 150);
     const color = pct > 100 ? 'var(--red)' : pct > 80 ? 'var(--yellow)' : 'var(--green)';
