@@ -327,50 +327,56 @@ function renderAnnualSummary() {
 
 function renderCategoryBreakdown() {
   const container = document.getElementById('tab-categories');
-  if (!rawCategoryRows || rawCategoryRows.length < 2) {
-    container.querySelector('.chart-row').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem">No category data available. Run the CLI to process transactions.</p>';
-    return;
-  }
+  const chartRow = container.querySelector('.chart-row');
+  const excludeCats = new Set(['Income', 'Taxes', 'Retirement', 'Investment', 'Transfer']);
 
-  const headers = rawCategoryRows[0];
-  const categories = headers.slice(1);
-  if (!categories.length) {
-    container.querySelector('.chart-row').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem">No spending categories found.</p>';
-    return;
-  }
-
-  // Row 1 is budget, rows 2+ are monthly data
-  const allDataRows = rawCategoryRows.slice(2);
-  if (!allDataRows.length) {
-    container.querySelector('.chart-row').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem">No monthly spending data yet.</p>';
-    return;
-  }
-
-  // Filter by period
+  // Build category data from transactions (always available)
   const prefix = getFilteredMonth();
-  const dataRows = prefix
-    ? allDataRows.filter(row => (row[0] || '').startsWith(prefix))
-    : allDataRows;
+  const txns = prefix
+    ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
+    : rawTransactionData;
 
-  const totals = categories.map((_, ci) =>
-    dataRows.reduce((sum, row) => sum + (parseNum(row[ci + 1]) || 0), 0)
-  );
+  // Aggregate spending by category (negative amounts only)
+  const catTotals = {};
+  const catByMonth = {};
+  txns.forEach(r => {
+    const amt = parseNum(r.Amount);
+    const cat = r.Category || 'Other';
+    if (amt >= 0 || excludeCats.has(cat)) return;
+    const absAmt = Math.abs(amt);
+    catTotals[cat] = (catTotals[cat] || 0) + absAmt;
+    const month = (r.Date || '').substring(0, 7);
+    if (month) {
+      if (!catByMonth[month]) catByMonth[month] = {};
+      catByMonth[month][cat] = (catByMonth[month][cat] || 0) + absAmt;
+    }
+  });
+
+  const categories = Object.keys(catTotals).sort((a, b) => catTotals[b] - catTotals[a]);
+  if (!categories.length) {
+    chartRow.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem">No spending data found.</p>';
+    return;
+  }
 
   const colors = generateColors(categories.length);
+  const totals = categories.map(c => catTotals[c]);
 
+  // Pie chart
   createOrUpdateChart('chart-category-pie', 'pie', {
     labels: categories,
     datasets: [{ data: totals, backgroundColor: colors }],
   }, { plugins: { title: { display: true, text: 'Spending by Category', color: '#e4e6f0' } } });
 
+  // Bar chart by month
+  const months = Object.keys(catByMonth).sort();
   const datasets = categories.map((cat, ci) => ({
     label: cat,
-    data: dataRows.map(row => parseNum(row[ci + 1]) || 0),
+    data: months.map(m => catByMonth[m]?.[cat] || 0),
     backgroundColor: colors[ci],
   }));
 
   createOrUpdateChart('chart-category-bar', 'bar', {
-    labels: dataRows.map(r => r[0]),
+    labels: months,
     datasets,
   }, {
     plugins: { title: { display: true, text: 'Category Spending by Month', color: '#e4e6f0' } },
