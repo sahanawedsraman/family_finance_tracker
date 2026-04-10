@@ -179,14 +179,14 @@ function renderKPIs() {
     return;
   }
 
-  const totalIncome = filtered.reduce((s, r) => s + (parseFloat(r['Total Income']) || 0), 0);
-  const totalExpenses = filtered.reduce((s, r) => s + Math.abs(parseFloat(r['Total Expenses']) || 0), 0);
+  const totalIncome = filtered.reduce((s, r) => s + (parseNum(r['Total Income']) || 0), 0);
+  const totalExpenses = filtered.reduce((s, r) => s + Math.abs(parseNum(r['Total Expenses']) || 0), 0);
   const netSavings = totalIncome - totalExpenses;
   const savingsRate = (totalIncome > 0 && totalExpenses > 0) ? (netSavings / totalIncome * 100) : 0;
 
   const numMonths = filtered.length;
   const totalMonths = rawMonthlyData.length || 1;
-  const overallBudget = parseFloat(rawKpiRows[1]?.[1]) || 0;
+  const overallBudget = parseNum(rawKpiRows[1]?.[1]) || 0;
   const monthlyBudget = overallBudget / totalMonths;
   const periodBudget = monthlyBudget * numMonths;
   const budgetHealth = periodBudget > 0 ? (totalExpenses / periodBudget * 100) : 0;
@@ -234,9 +234,9 @@ function renderMonthlySummary() {
   const data = filterByPeriod(rawMonthlyData, 'Month');
 
   const months = data.map(r => r.Month);
-  const income = data.map(r => parseFloat(r['Total Income']) || 0);
-  const expenses = data.map(r => Math.abs(parseFloat(r['Total Expenses']) || 0));
-  const savings = data.map(r => parseFloat(r['Net Savings']) || 0);
+  const income = data.map(r => parseNum(r['Total Income']) || 0);
+  const expenses = data.map(r => Math.abs(parseNum(r['Total Expenses']) || 0));
+  const savings = data.map(r => parseNum(r['Net Savings']) || 0);
 
   createOrUpdateChart('chart-income-expenses', 'bar', {
     labels: months,
@@ -260,12 +260,12 @@ function renderMonthlySummary() {
   html += '<th>Month</th><th>Income</th><th>Expenses</th><th>Net Savings</th><th>Savings Rate</th>';
   html += '</tr></thead><tbody>';
   data.forEach(r => {
-    const amt = parseFloat(r['Net Savings']) || 0;
+    const amt = parseNum(r['Net Savings']) || 0;
     const cls = amt >= 0 ? 'amount-positive' : 'amount-negative';
     html += `<tr>
       <td>${r.Month}</td>
       <td>${fmtNum(r['Total Income'])}</td>
-      <td>${fmtNum(Math.abs(parseFloat(r['Total Expenses']) || 0))}</td>
+      <td>${fmtNum(Math.abs(parseNum(r['Total Expenses']) || 0))}</td>
       <td class="${cls}">${fmtNum(r['Net Savings'])}</td>
       <td>${r['Savings Rate (%)'] || '0'}%</td>
     </tr>`;
@@ -283,9 +283,9 @@ function renderAnnualSummary() {
     : rawAnnualData;
 
   const years = data.map(r => r.Year);
-  const income = data.map(r => parseFloat(r['Total Income']) || 0);
-  const expenses = data.map(r => Math.abs(parseFloat(r['Total Expenses']) || 0));
-  const savings = data.map(r => parseFloat(r['Net Savings']) || 0);
+  const income = data.map(r => parseNum(r['Total Income']) || 0);
+  const expenses = data.map(r => Math.abs(parseNum(r['Total Expenses']) || 0));
+  const savings = data.map(r => parseNum(r['Net Savings']) || 0);
 
   createOrUpdateChart('chart-annual-income-expenses', 'bar', {
     labels: years,
@@ -308,12 +308,12 @@ function renderAnnualSummary() {
   html += '<th>Year</th><th>Income</th><th>Expenses</th><th>Net Savings</th><th>Savings Rate</th><th>Avg Monthly Spending</th>';
   html += '</tr></thead><tbody>';
   data.forEach(r => {
-    const amt = parseFloat(r['Net Savings']) || 0;
+    const amt = parseNum(r['Net Savings']) || 0;
     const cls = amt >= 0 ? 'amount-positive' : 'amount-negative';
     html += `<tr>
       <td>${r.Year}</td>
       <td>${fmtNum(r['Total Income'])}</td>
-      <td>${fmtNum(Math.abs(parseFloat(r['Total Expenses']) || 0))}</td>
+      <td>${fmtNum(Math.abs(parseNum(r['Total Expenses']) || 0))}</td>
       <td class="${cls}">${fmtNum(r['Net Savings'])}</td>
       <td>${r['Savings Rate (%)'] || '0'}%</td>
       <td>${fmtNum(r['Avg Monthly Spending'])}</td>
@@ -353,7 +353,7 @@ function renderCategoryBreakdown() {
     : allDataRows;
 
   const totals = categories.map((_, ci) =>
-    dataRows.reduce((sum, row) => sum + (parseFloat(row[ci + 1]) || 0), 0)
+    dataRows.reduce((sum, row) => sum + (parseNum(row[ci + 1]) || 0), 0)
   );
 
   const colors = generateColors(categories.length);
@@ -365,7 +365,7 @@ function renderCategoryBreakdown() {
 
   const datasets = categories.map((cat, ci) => ({
     label: cat,
-    data: dataRows.map(row => parseFloat(row[ci + 1]) || 0),
+    data: dataRows.map(row => parseNum(row[ci + 1]) || 0),
     backgroundColor: colors[ci],
   }));
 
@@ -386,8 +386,8 @@ function renderBudgetStatus() {
   if (!data.length) return;
 
   const categories = data.map(r => r.Category);
-  const budgets = data.map(r => parseFloat(r['Total Budget']) || 0);
-  const actuals = data.map(r => parseFloat(r['Total Actual']) || 0);
+  const budgets = data.map(r => parseNum(r['Total Budget']) || 0);
+  const actuals = data.map(r => parseNum(r['Total Actual']) || 0);
 
   createOrUpdateChart('chart-budget', 'bar', {
     labels: categories,
@@ -405,7 +405,7 @@ function renderBudgetStatus() {
   html += '<th>Category</th><th>Budget</th><th>Actual</th><th>Difference</th><th>Status</th>';
   html += '</tr></thead><tbody>';
   data.forEach(r => {
-    const diff = parseFloat(r.Difference) || 0;
+    const diff = parseNum(r.Difference) || 0;
     const statusCls = r.Status === 'Under Budget' ? 'status-under' : 'status-over';
     html += `<tr>
       <td>${r.Category}</td>
@@ -485,7 +485,7 @@ function onSortClick(col) {
 function renderTopCategories(data) {
   const spending = {};
   data.forEach(r => {
-    const amt = parseFloat(r.Amount) || 0;
+    const amt = parseNum(r.Amount) || 0;
     if (amt < 0) {
       const cat = r.Category || 'Other';
       spending[cat] = (spending[cat] || 0) + Math.abs(amt);
@@ -552,7 +552,7 @@ function renderTransactionTable(data) {
   html += '</tr></thead><tbody>';
 
   data.forEach(r => {
-    const amt = parseFloat(r.Amount) || 0;
+    const amt = parseNum(r.Amount) || 0;
     const cls = amt >= 0 ? 'amount-positive' : 'amount-negative';
     html += `<tr>
       <td>${r.Date || ''}</td>
@@ -600,8 +600,16 @@ function generateColors(count) {
   return Array.from({ length: count }, (_, i) => palette[i % palette.length]);
 }
 
+function parseNum(val) {
+  if (typeof val === 'number') return val;
+  if (!val) return 0;
+  const cleaned = String(val).replace(/[$,\s]/g, '');
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? 0 : n;
+}
+
 function fmtNum(val) {
-  const n = parseFloat(val) || 0;
+  const n = parseNum(val);
   return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -662,14 +670,14 @@ function renderSparkline(canvasId, values, color) {
 function renderSparklines() {
   // Savings rate sparkline from monthly data
   const months = rawMonthlyData.map(r => {
-    const inc = parseFloat(r['Total Income']) || 0;
-    const exp = Math.abs(parseFloat(r['Total Expenses']) || 0);
+    const inc = parseNum(r['Total Income']) || 0;
+    const exp = Math.abs(parseNum(r['Total Expenses']) || 0);
     return inc > 0 ? ((inc - exp) / inc * 100) : 0;
   });
   renderSparkline('spark-savings', months.slice(-6), '#6c63ff');
 
   // Spending sparkline
-  const spending = rawMonthlyData.map(r => Math.abs(parseFloat(r['Total Expenses']) || 0));
+  const spending = rawMonthlyData.map(r => Math.abs(parseNum(r['Total Expenses']) || 0));
   renderSparkline('spark-spending', spending.slice(-6), '#f87171');
 }
 
@@ -696,9 +704,9 @@ function renderCategoryComparison() {
 
   let html = '';
   categories.forEach((cat, ci) => {
-    const curr = parseFloat(latest[ci + 1]) || 0;
+    const curr = parseNum(latest[ci + 1]) || 0;
     if (curr === 0) return;
-    const prevAmt = prev ? (parseFloat(prev[ci + 1]) || 0) : 0;
+    const prevAmt = prev ? (parseNum(prev[ci + 1]) || 0) : 0;
     const change = prevAmt > 0 ? ((curr - prevAmt) / prevAmt * 100) : 0;
     const changeStr = prevAmt > 0
       ? `<span style="color:${change > 0 ? 'var(--red)' : 'var(--green)'}">${change > 0 ? '↑' : '↓'} ${Math.abs(change).toFixed(0)}% vs last month</span>`
