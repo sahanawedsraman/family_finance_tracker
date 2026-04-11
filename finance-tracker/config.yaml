@@ -7,6 +7,8 @@ persons:
     patterns: ["raman", "chase_raman", "bofa_raman"]
   - name: "Sahana"
     patterns: ["sahana", "chase_sahana", "bofa_sahana"]
+  - name: "Joint"
+    patterns: ["joint"]
 
 categories:
   Groceries: ["walmart", "costco", "trader joe", "whole foods", "safeway", "kroger", "aldi", "publix", "heb", "grocery", "sprouts", "food lion", "wegmans", "winco", "piggly", "market basket", "stop & shop", "giant", "meijer", "sam's club", "shoprite", "food mart", "fresh market", "instacart"]
