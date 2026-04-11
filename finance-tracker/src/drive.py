@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 SUPPORTED_MIME_TYPES = {
     "application/pdf",
     "text/csv",
+    "application/csv",
+    "text/comma-separated-values",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # .xlsx
     "application/vnd.ms-excel",  # .xls
 }
@@ -82,6 +84,9 @@ def download_files(service, files: list[DriveFile], download_dir: str) -> list[D
     return downloaded
 
 
+SHORTCUT_MIME_TYPE = "application/vnd.google-apps.shortcut"
+
+
 def list_files(service, folder_id: str) -> list[DriveFile]:
     """Recursively list all supported files in a Drive folder and its subfolders."""
     results: list[DriveFile] = []
@@ -90,7 +95,8 @@ def list_files(service, folder_id: str) -> list[DriveFile]:
 
 
 def _list_files_recursive(service, folder_id: str, results: list[DriveFile], folder_path: str = "") -> None:
-    """Recursively scan a folder, collecting supported files and descending into subfolders."""
+    """Recursively scan a folder, collecting supported files and descending into subfolders.
+    Also follows Google Drive shortcuts to folders and files."""
     page_token = None
     while True:
         def _list_page(pt=page_token):
@@ -98,7 +104,7 @@ def _list_files_recursive(service, folder_id: str, results: list[DriveFile], fol
                 service.files()
                 .list(
                     q=f"'{folder_id}' in parents and trashed = false",
-                    fields="nextPageToken, files(id, name, mimeType)",
+                    fields="nextPageToken, files(id, name, mimeType, shortcutDetails)",
                     pageToken=pt,
                 )
                 .execute()
@@ -108,7 +114,27 @@ def _list_files_recursive(service, folder_id: str, results: list[DriveFile], fol
 
         for item in response.get("files", []):
             mime = item["mimeType"]
-            if mime == FOLDER_MIME_TYPE:
+
+            # Follow shortcuts
+            if mime == SHORTCUT_MIME_TYPE:
+                shortcut = item.get("shortcutDetails", {})
+                target_id = shortcut.get("targetId")
+                target_mime = shortcut.get("targetMimeType", "")
+                if not target_id:
+                    continue
+                if target_mime == FOLDER_MIME_TYPE:
+                    subfolder_path = f"{folder_path}/{item['name']}" if folder_path else item["name"]
+                    _list_files_recursive(service, target_id, results, subfolder_path)
+                elif target_mime in SUPPORTED_MIME_TYPES:
+                    results.append(
+                        DriveFile(
+                            id=target_id,
+                            name=item["name"],
+                            mime_type=target_mime,
+                            folder_path=folder_path,
+                        )
+                    )
+            elif mime == FOLDER_MIME_TYPE:
                 subfolder_path = f"{folder_path}/{item['name']}" if folder_path else item["name"]
                 _list_files_recursive(service, item["id"], results, subfolder_path)
             elif mime in SUPPORTED_MIME_TYPES:

@@ -223,6 +223,8 @@ EXTENSION_MAP = {
 
 MIME_MAP = {
     MIME_CSV: "csv",
+    "application/csv": "csv",
+    "text/comma-separated-values": "csv",
     MIME_XLSX: "excel",
     MIME_XLS: "excel",
     MIME_PDF: "pdf",
