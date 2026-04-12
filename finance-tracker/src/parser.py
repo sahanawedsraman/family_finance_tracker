@@ -230,6 +230,16 @@ MIME_MAP = {
     MIME_PDF: "pdf",
 }
 
+# Credit card issuers that use inverted sign convention
+# (positive = purchase, negative = payment/refund)
+INVERTED_SIGN_PATTERNS = ["discover"]
+
+
+def _is_discover_file(file_name: str) -> bool:
+    """Check if a file is from an issuer with inverted sign convention."""
+    name_lower = file_name.lower()
+    return any(p in name_lower for p in INVERTED_SIGN_PATTERNS)
+
 
 def detect_person(file_path: str, file_name: str, person_patterns: dict[str, list[str]], folder_path: str = "") -> str:
     """
@@ -323,6 +333,14 @@ def parse_file(
     else:
         logger.warning("Unsupported file type for %s (mime: %s)", file_name, mime_type)
         return []
+
+    # Flip signs for Discover credit card CSVs (positive = purchase, negative = payment/refund)
+    # Our convention: negative = spending, positive = income
+    if _is_discover_file(file_name):
+        for txn in transactions:
+            txn.amount = -txn.amount
+            txn.transaction_type = "debit" if txn.amount < 0 else "credit"
+        logger.info("Flipped signs for Discover file: %s", file_name)
 
     # Assign person and source file
     person = "Unknown"
