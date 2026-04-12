@@ -48,4 +48,4 @@ gemini:
   enabled: true
   api_key: ""  # leave empty to use GEMINI_API_KEY env var
   model: "gemini-2.0-flash"  # primary model
-  fallback_models: ["gemini-2.0-flash-lite", "gemini-1.5-flash"]  # tried if primary hits rate limit
+  fallback_models: []  # empty = no fallbacks, only use primary model
