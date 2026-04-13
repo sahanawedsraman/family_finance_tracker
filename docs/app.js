@@ -43,6 +43,11 @@ function initAuth() {
   document.getElementById('btn-privacy').addEventListener('click', togglePrivacy);
   initMenu();
   initQuickNav();
+  document.getElementById('btn-home').addEventListener('click', (e) => {
+    e.preventDefault();
+    switchTab('home');
+    document.querySelectorAll('.menu-item[data-tab]').forEach(i => i.classList.toggle('active', i.dataset.tab === 'home'));
+  });
 }
 
 function onTokenResponse(resp) {

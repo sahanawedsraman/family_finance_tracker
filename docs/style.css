@@ -110,11 +110,13 @@ header {
   min-width: 60px;
 }
 
-.header-center {
+.header-center a {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.25rem;
+  text-decoration: none;
+  color: var(--text);
 }
 
 .header-logo {
