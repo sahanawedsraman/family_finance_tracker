@@ -410,6 +410,53 @@ footer {
   font-size: 0.8rem;
 }
 
+/* Quick Month Nav */
+.quick-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+#current-period-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  min-width: 120px;
+  text-align: center;
+}
+
+/* Data Summary */
+.data-summary {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.data-summary .badge {
+  display: inline-block;
+  background: var(--yellow);
+  color: #fff;
+  border-radius: 10px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-left: 0.5rem;
+  cursor: pointer;
+}
+
+/* Duplicate Warning */
+.duplicate-warning {
+  background: var(--surface);
+  border: 1px solid var(--yellow);
+  border-radius: var(--radius);
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
 /* Spending Pace */
 .spending-pace-card {
   background: var(--surface);

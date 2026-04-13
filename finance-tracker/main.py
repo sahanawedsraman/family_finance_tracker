@@ -50,10 +50,20 @@ def parse_args(argv=None):
         default="config.yaml",
         help="Path to the YAML configuration file",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be processed without writing to Sheets",
+    )
+    parser.add_argument(
+        "--learn-categories",
+        action="store_true",
+        help="Suggest new keywords based on recategorized transactions",
+    )
     return parser.parse_args(argv)
 
 
-def run_pipeline(config_path="config.yaml"):
+def run_pipeline(config_path="config.yaml", dry_run=False):
     """Run the full finance tracker pipeline.
 
     Returns:
@@ -215,6 +225,11 @@ def run_pipeline(config_path="config.yaml"):
         categorize_transactions(all_transactions, config.categories)
 
     # Step 9: Write transactions (merges with existing, preserves manual edits)
+    if dry_run:
+        print(f"Would process {len(all_transactions)} new transactions")
+        print(f"Categories: {dict(sorted({t.category: sum(1 for x in all_transactions if x.category == t.category) for t in all_transactions}.items(), key=lambda x: -x[1]))}")
+        return summary
+
     try:
         spreadsheet_id = create_or_get_sheet(
             sheets_service, config.sheet_id, config.sheet_name
@@ -300,6 +315,47 @@ def run_pipeline(config_path="config.yaml"):
     return summary
 
 
+def learn_categories(config_path: str) -> None:
+    """Analyze recategorized transactions and suggest new keywords for config."""
+    from src.categorizer import match_category
+
+    config = load_config(config_path)
+    creds = get_credentials()
+    sheets_service = build_sheets_service(creds)
+
+    txns = read_existing_transactions(sheets_service, config.sheet_id)
+
+    missed = {}
+    for t in txns:
+        cat = t.get("Category", "Other")
+        desc = t.get("Description", "")
+        if not cat or cat == "Other" or not desc:
+            continue
+        matched = match_category(desc, config.categories)
+        if matched != cat:
+            if cat not in missed:
+                missed[cat] = set()
+            # Extract a short keyword from the description
+            words = desc.lower().strip().split()
+            keyword = " ".join(words[:3]) if len(words) > 2 else desc.lower().strip()
+            missed[cat].add(keyword)
+
+    if not missed:
+        print("All transactions match their keywords. Nothing to learn.")
+        return
+
+    print("\nSuggested additions to config.yaml categories:\n")
+    for cat in sorted(missed):
+        keywords = sorted(missed[cat])
+        existing = [k.lower() for k in config.categories.get(cat, [])]
+        new_keywords = [k for k in keywords if k not in existing]
+        if new_keywords:
+            print(f"  {cat}:")
+            for kw in new_keywords[:10]:
+                print(f'    - "{kw}"')
+    print("\nCopy these into your config.yaml categories section.")
+
+
 def main(argv=None):
     """Main entry point for the finance tracker pipeline."""
     args = parse_args(argv)
@@ -309,7 +365,14 @@ def main(argv=None):
         print(f"Error: Configuration file not found: {config_path}", file=sys.stderr)
         sys.exit(1)
 
-    summary = run_pipeline(config_path)
+    if args.learn_categories:
+        learn_categories(config_path)
+        return
+
+    if args.dry_run:
+        print("DRY RUN — no data will be written to Sheets\n")
+
+    summary = run_pipeline(config_path, dry_run=args.dry_run)
 
     # Print end-of-run summary
     summary_text = summary.format_summary()

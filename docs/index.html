@@ -88,6 +88,16 @@
 
     <!-- Tab Panels -->
     <div id="tab-home" class="tab-panel active" role="tabpanel">
+      <!-- Quick Month Nav -->
+      <div class="quick-nav">
+        <button id="btn-prev-month" class="btn-small">← Prev</button>
+        <span id="current-period-label">All Time</span>
+        <button id="btn-next-month" class="btn-small">Next →</button>
+      </div>
+
+      <!-- Data Summary Bar -->
+      <div id="data-summary" class="data-summary"></div>
+
       <!-- KPI Cards -->
       <section id="kpi-section" class="kpi-grid" aria-label="Key Performance Indicators">
         <div class="kpi-card">
@@ -159,6 +169,7 @@
 
     <div id="tab-transactions" class="tab-panel" role="tabpanel">
       <div id="recurring-container"></div>
+      <div id="duplicate-warning"></div>
       <div class="table-controls">
         <input type="text" id="txn-search" placeholder="Search description..." aria-label="Search transactions">
         <select id="txn-person-filter" aria-label="Filter by person">

@@ -42,6 +42,7 @@ function initAuth() {
   });
   document.getElementById('btn-privacy').addEventListener('click', togglePrivacy);
   initMenu();
+  initQuickNav();
 }
 
 function onTokenResponse(resp) {
@@ -237,6 +238,8 @@ function filterByPeriod(data, monthKey) {
 }
 
 function applyFilters() {
+  renderPeriodLabel();
+  renderDataSummary();
   renderKPIs();
   renderSparklines();
   renderSpendingPace();
@@ -249,6 +252,7 @@ function applyFilters() {
   renderBudgetProgress();
   renderTransactions();
   renderRecurring();
+  renderDuplicateWarning();
 }
 
 // ── KPIs ──
@@ -1132,6 +1136,116 @@ function renderRecurring() {
       <span class="recurring-amt">~${fmtNum(r.avgAmt)}/mo</span>
     </div>`;
   });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// ── Quick Month Navigation ──
+
+function initQuickNav() {
+  document.getElementById('btn-prev-month').addEventListener('click', () => navigateMonth(-1));
+  document.getElementById('btn-next-month').addEventListener('click', () => navigateMonth(1));
+}
+
+function navigateMonth(delta) {
+  const yearSelect = document.getElementById('filter-year');
+  const monthSelect = document.getElementById('filter-month');
+
+  let year = parseInt(yearSelect.value) || new Date().getFullYear();
+  let month = parseInt(monthSelect.value) || new Date().getMonth() + 1;
+
+  month += delta;
+  if (month > 12) { month = 1; year++; }
+  if (month < 1) { month = 12; year--; }
+
+  const yearStr = String(year);
+  const monthStr = String(month).padStart(2, '0');
+
+  if ([...yearSelect.options].some(o => o.value === yearStr)) {
+    yearSelect.value = yearStr;
+  }
+  updateMonthOptions();
+  if ([...monthSelect.options].some(o => o.value === monthStr)) {
+    monthSelect.value = monthStr;
+  }
+  applyFilters();
+}
+
+function renderPeriodLabel() {
+  const year = document.getElementById('filter-year').value;
+  const month = document.getElementById('filter-month').value;
+  const label = document.getElementById('current-period-label');
+  if (!label) return;
+
+  if (year && month) {
+    const monthName = MONTH_NAMES[parseInt(month, 10)] || month;
+    label.textContent = `${monthName} ${year}`;
+  } else if (year) {
+    label.textContent = `Year ${year}`;
+  } else {
+    label.textContent = 'All Time';
+  }
+}
+
+// ── Data Summary & Uncategorized Badge ──
+
+function renderDataSummary() {
+  const container = document.getElementById('data-summary');
+  if (!container) return;
+
+  const prefix = getFilteredMonth();
+  const txns = prefix
+    ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
+    : rawTransactionData;
+
+  const months = new Set();
+  txns.forEach(r => { const m = (r.Date || '').substring(0, 7); if (m) months.add(m); });
+
+  const uncategorized = txns.filter(r => r.Category === 'Other').length;
+
+  let html = `${txns.length} transactions across ${months.size} month${months.size !== 1 ? 's' : ''}`;
+  if (uncategorized > 0) {
+    html += `<span class="badge" onclick="switchTab('transactions');document.getElementById('txn-category-filter').value='Other';renderTransactions();">${uncategorized} uncategorized</span>`;
+  }
+  container.innerHTML = html;
+}
+
+// ── Duplicate Detection ──
+
+function renderDuplicateWarning() {
+  const container = document.getElementById('duplicate-warning');
+  if (!container) return;
+
+  const prefix = getFilteredMonth();
+  const txns = prefix
+    ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
+    : rawTransactionData;
+
+  // Find potential duplicates: same date, same absolute amount, similar description
+  const seen = {};
+  const dupes = [];
+  txns.forEach(r => {
+    const date = r.Date || '';
+    const amt = Math.abs(parseNum(r.Amount)).toFixed(2);
+    const desc = (r.Description || '').toLowerCase().substring(0, 20);
+    const key = `${date}|${amt}|${desc}`;
+    if (seen[key]) {
+      dupes.push({ a: seen[key], b: r });
+    } else {
+      seen[key] = r;
+    }
+  });
+
+  if (!dupes.length) {
+    container.innerHTML = '';
+    return;
+  }
+
+  let html = `<div class="duplicate-warning">Possible duplicates found (${dupes.length}):`;
+  dupes.slice(0, 5).forEach(d => {
+    html += `<br>• ${d.a.Date} — ${d.a.Description} — ${fmtNum(d.a.Amount)} (${d.a['Source File']} vs ${d.b['Source File']})`;
+  });
+  if (dupes.length > 5) html += `<br>...and ${dupes.length - 5} more`;
   html += '</div>';
   container.innerHTML = html;
 }
