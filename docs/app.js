@@ -272,7 +272,23 @@ function renderKPIs() {
   const overallBudget = parseNum(rawKpiRows[1]?.[1]) || 0;
   const monthlyBudget = overallBudget / totalMonths;
   const periodBudget = monthlyBudget * numMonths;
-  const budgetHealth = periodBudget > 0 ? (totalExpenses / periodBudget * 100) : 0;
+
+  // Budget health: only count spending in categories that have a budget
+  const budgetedCats = new Set(rawBudgetData.map(r => r.Category).filter(Boolean));
+  const excludeCats = new Set(['Income', 'Taxes', 'Retirement', 'Investment', 'Transfer', 'Healthcare', 'Utilities']);
+  const prefix = getFilteredMonth();
+  const txns = prefix
+    ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
+    : rawTransactionData;
+  const budgetedSpending = txns.reduce((s, r) => {
+    const amt = parseNum(r.Amount);
+    const cat = r.Category || 'Other';
+    if (amt < 0 && budgetedCats.has(cat) && !excludeCats.has(cat)) {
+      return s + Math.abs(amt);
+    }
+    return s;
+  }, 0);
+  const budgetHealth = periodBudget > 0 ? (budgetedSpending / periodBudget * 100) : 0;
 
   document.getElementById('kpi-savings-rate').textContent = savingsRate.toFixed(1) + '%';
   document.getElementById('kpi-total-budget').innerHTML = '<span class="money">$' + periodBudget.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span>';
