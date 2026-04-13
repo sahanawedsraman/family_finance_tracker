@@ -138,9 +138,11 @@ header h1 {
   padding: 0.4rem 0.8rem;
   font-size: 0.8rem;
   cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
 }
 
 .btn-small:hover { background: var(--border); }
+.btn-small:active { transform: scale(0.95); }
 
 /* Hamburger Menu Button */
 .btn-menu {
@@ -158,6 +160,13 @@ header h1 {
   inset: 0;
   background: rgba(0,0,0,0.3);
   z-index: 200;
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+
+.menu-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .side-menu {
@@ -172,7 +181,8 @@ header h1 {
   display: flex;
   flex-direction: column;
   box-shadow: 4px 0 20px rgba(0,0,0,0.1);
-  transition: transform 0.25s ease;
+  transform: translateX(0);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .side-menu.hidden { transform: translateX(-100%); }
@@ -212,7 +222,7 @@ header h1 {
 }
 
 .menu-item:hover { background: var(--surface2); }
-.menu-item.active { color: var(--accent); font-weight: 500; }
+.menu-item.active { color: var(--accent); font-weight: 500; background: var(--surface2); }
 
 .menu-divider {
   border: none;
@@ -259,8 +269,17 @@ header h1 {
 }
 
 .kpi-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+}
+
+.kpi-card:nth-child(1) { animation-delay: 0s; }
+.kpi-card:nth-child(2) { animation-delay: 0.05s; }
+.kpi-card:nth-child(3) { animation-delay: 0.1s; }
+.kpi-card:nth-child(4) { animation-delay: 0.15s; }
+
+.tab-panel.active .kpi-card {
+  animation: fadeSlideIn 0.3s ease backwards;
 }
 
 .kpi-label { color: var(--text-muted); font-size: 0.75rem; letter-spacing: 0.02em; }
@@ -279,11 +298,31 @@ header h1 {
   margin-bottom: 0.5rem;
   font-size: 0.85rem;
   line-height: 1.4;
+  animation: fadeSlideIn 0.3s ease backwards;
 }
 
+.insight-item:nth-child(1) { animation-delay: 0.05s; }
+.insight-item:nth-child(2) { animation-delay: 0.1s; }
+.insight-item:nth-child(3) { animation-delay: 0.15s; }
+.insight-item:nth-child(4) { animation-delay: 0.2s; }
+.insight-item:nth-child(5) { animation-delay: 0.25s; }
+
 /* Tab Panels */
-.tab-panel { display: none; }
-.tab-panel.active { display: block; }
+.tab-panel {
+  display: none;
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.tab-panel.active {
+  display: block;
+  animation: fadeSlideIn 0.3s ease forwards;
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 /* Charts */
 .chart-row {
@@ -391,6 +430,12 @@ th.sortable:hover { color: var(--accent); }
   display: flex;
   flex-direction: column;
   min-width: 120px;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.top-cat-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.06);
 }
 
 .top-cat-name { font-size: 0.75rem; color: var(--text-muted); }
@@ -576,6 +621,12 @@ footer {
   padding: 0.6rem 0.8rem;
   min-width: 140px;
   flex-shrink: 0;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.cat-compare-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.06);
 }
 
 .cat-compare-name { font-size: 0.75rem; color: var(--text-muted); }
