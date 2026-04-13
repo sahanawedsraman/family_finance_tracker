@@ -1262,13 +1262,13 @@ function initMenu() {
   const overlay = document.getElementById('menu-overlay');
 
   document.getElementById('btn-menu').addEventListener('click', () => {
-    menu.classList.remove('hidden');
-    overlay.classList.remove('hidden');
+    menu.classList.add('open');
+    overlay.classList.add('open');
   });
 
   function closeMenu() {
-    menu.classList.add('hidden');
-    overlay.classList.add('hidden');
+    menu.classList.remove('open');
+    overlay.classList.remove('open');
   }
 
   document.getElementById('btn-menu-close').addEventListener('click', closeMenu);
