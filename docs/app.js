@@ -901,7 +901,7 @@ function createOrUpdateChart(canvasId, type, data, extraOpts = {}) {
   if (charts[canvasId]) { charts[canvasId].destroy(); }
   charts[canvasId] = new Chart(ctx, {
     type, data,
-    options: { responsive: true, maintainAspectRatio: true, ...extraOpts },
+    options: { responsive: true, maintainAspectRatio: false, ...extraOpts },
   });
 }
 

@@ -412,13 +412,15 @@ header h1 {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 1rem;
+  min-height: 300px;
+  position: relative;
 }
 
 canvas {
   background: transparent;
   border-radius: var(--radius);
-  padding: 1rem;
   width: 100% !important;
+  height: 100% !important;
 }
 
 /* Tables */
