@@ -416,7 +416,7 @@ header h1 {
   position: relative;
 }
 
-canvas {
+.chart-wrapper canvas {
   background: transparent;
   border-radius: var(--radius);
   width: 100% !important;
