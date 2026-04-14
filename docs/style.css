@@ -412,7 +412,7 @@ header h1 {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 1rem;
-  min-height: 300px;
+  min-height: 400px;
   position: relative;
 }
 
