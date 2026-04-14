@@ -36,21 +36,6 @@ body {
   min-height: 100vh;
 }
 
-/* Gradient accent bar at top */
-body::before {
-  content: '';
-  display: block;
-  height: 3px;
-  background: linear-gradient(90deg, var(--accent), var(--green), var(--accent));
-  background-size: 200% 100%;
-  animation: gradientShift 8s ease infinite;
-}
-
-@keyframes gradientShift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-
 .screen { display: flex; }
 .hidden { display: none !important; }
 
@@ -374,19 +359,24 @@ header h1 {
 
 /* Progress ring */
 .progress-ring {
-  display: inline-block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   position: relative;
-  width: 60px;
-  height: 60px;
+  width: 80px;
+  height: 80px;
+  margin: 0.25rem auto 0;
 }
 
 .progress-ring svg {
   transform: rotate(-90deg);
+  width: 80px;
+  height: 80px;
 }
 
 .progress-ring-circle {
   fill: none;
-  stroke-width: 5;
+  stroke-width: 6;
   stroke-linecap: round;
   transition: stroke-dashoffset 0.8s ease;
 }
@@ -394,7 +384,7 @@ header h1 {
 .progress-ring-bg {
   fill: none;
   stroke: var(--border);
-  stroke-width: 5;
+  stroke-width: 6;
 }
 
 .progress-ring-label {
@@ -403,7 +393,7 @@ header h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
+  font-size: 0.9rem;
   font-weight: 600;
 }
 

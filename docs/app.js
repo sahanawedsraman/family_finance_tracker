@@ -308,13 +308,13 @@ function renderKPIs() {
   const healthEl = document.getElementById('kpi-budget-health');
   const healthColor = budgetHealth <= 100 ? 'var(--green)' : 'var(--red)';
   const pct = Math.min(budgetHealth, 150);
-  const circumference = 2 * Math.PI * 25;
+  const circumference = 2 * Math.PI * 33;
   const offset = circumference - (Math.min(pct, 100) / 100) * circumference;
   healthEl.innerHTML = `
     <div class="progress-ring">
-      <svg width="60" height="60">
-        <circle class="progress-ring-bg" cx="30" cy="30" r="25"/>
-        <circle class="progress-ring-circle" cx="30" cy="30" r="25"
+      <svg width="80" height="80">
+        <circle class="progress-ring-bg" cx="40" cy="40" r="33"/>
+        <circle class="progress-ring-circle" cx="40" cy="40" r="33"
           stroke="${healthColor}"
           stroke-dasharray="${circumference}"
           stroke-dashoffset="${offset}"/>
@@ -641,17 +641,6 @@ function renderBudgetStatus() {
   });
 
   if (!categories.length) return;
-
-  createOrUpdateChart('chart-budget', 'bar', {
-    labels: categories,
-    datasets: [
-      { label: 'Budget (with rollover)', data: budgets, backgroundColor: 'rgba(91, 168, 140, 0.7)' },
-      { label: 'Actual', data: actuals, backgroundColor: 'rgba(212, 114, 106, 0.7)' },
-    ],
-  }, {
-    indexAxis: 'y',
-    plugins: { title: { display: true, text: 'Budget vs Actual', color: '#e4e6f0' } },
-  });
 
   const container = document.getElementById('budget-table-container');
   let html = '<div class="table-scroll"><table><thead><tr>';
