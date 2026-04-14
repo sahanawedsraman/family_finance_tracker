@@ -531,6 +531,24 @@ function renderCategoryBreakdown() {
     plugins: { title: { display: true, text: 'Category Spending by Month', color: '#e4e6f0' } },
     scales: { x: { stacked: true }, y: { stacked: true } },
   });
+
+  // Ranking chart — horizontal bar sorted by spending
+  const rankColors = categories.map((_, i) => colors[i]);
+  createOrUpdateChart('chart-category-ranking', 'bar', {
+    labels: categories,
+    datasets: [{
+      label: 'Total Spent',
+      data: totals,
+      backgroundColor: rankColors,
+      borderRadius: 4,
+    }],
+  }, {
+    indexAxis: 'y',
+    plugins: {
+      title: { display: true, text: 'Spending Ranking', color: '#e4e6f0' },
+      legend: { display: false },
+    },
+  });
 }
 
 // ── Budget Status ──
