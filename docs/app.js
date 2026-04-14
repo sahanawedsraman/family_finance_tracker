@@ -110,6 +110,7 @@ function parseRows(rows) {
 // ── Data Loading ──
 
 async function loadAllData() {
+  showSkeletons();
   try {
     const [kpiRows, monthlyRows, annualRows, categoryRows, budgetRows, txnRows, metaRows] = await Promise.all([
       fetchSheet(CONFIG.TABS.KPIS),
@@ -266,7 +267,7 @@ function renderKPIs() {
   const filtered = filterByPeriod(rawMonthlyData, 'Month');
   if (!filtered.length) {
     ['kpi-savings-rate', 'kpi-total-budget', 'kpi-total-spending', 'kpi-budget-health'].forEach(id => {
-      document.getElementById(id).textContent = '—';
+      document.getElementById(id).innerHTML = '<span style="color:var(--text-muted)">—</span>';
     });
     return;
   }
@@ -299,13 +300,28 @@ function renderKPIs() {
   }, 0);
   const budgetHealth = periodBudget > 0 ? (budgetedSpending / periodBudget * 100) : 0;
 
-  document.getElementById('kpi-savings-rate').textContent = savingsRate.toFixed(1) + '%';
+  animateCounter('kpi-savings-rate', savingsRate, '%', false);
   document.getElementById('kpi-total-budget').innerHTML = '<span class="money">$' + periodBudget.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span>';
   document.getElementById('kpi-total-spending').innerHTML = '<span class="money">$' + totalExpenses.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span>';
 
+  // Progress ring for budget health
   const healthEl = document.getElementById('kpi-budget-health');
-  healthEl.textContent = budgetHealth.toFixed(1) + '%';
-  healthEl.style.color = budgetHealth <= 100 ? 'var(--green)' : 'var(--red)';
+  const healthColor = budgetHealth <= 100 ? 'var(--green)' : 'var(--red)';
+  const pct = Math.min(budgetHealth, 150);
+  const circumference = 2 * Math.PI * 25;
+  const offset = circumference - (Math.min(pct, 100) / 100) * circumference;
+  healthEl.innerHTML = `
+    <div class="progress-ring">
+      <svg width="60" height="60">
+        <circle class="progress-ring-bg" cx="30" cy="30" r="25"/>
+        <circle class="progress-ring-circle" cx="30" cy="30" r="25"
+          stroke="${healthColor}"
+          stroke-dasharray="${circumference}"
+          stroke-dashoffset="${offset}"/>
+      </svg>
+      <div class="progress-ring-label">${budgetHealth.toFixed(0)}%</div>
+    </div>
+  `;
 
   // Render insights from KPIs tab
   renderInsights();
@@ -825,6 +841,46 @@ function renderTransactionTable(data) {
   // Attach sort listeners
   container.querySelectorAll('th.sortable').forEach(th => {
     th.addEventListener('click', () => onSortClick(th.dataset.col));
+  });
+}
+
+// ── Animated Counter ──
+
+function animateCounter(elementId, targetValue, suffix = '', isMoney = false) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+
+  const duration = 600;
+  const startTime = performance.now();
+  const startValue = 0;
+
+  function update(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    // Ease out cubic
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = startValue + (targetValue - startValue) * eased;
+
+    if (isMoney) {
+      el.innerHTML = `<span class="money">$${Math.round(current).toLocaleString()}</span>`;
+    } else {
+      el.textContent = current.toFixed(1) + suffix;
+    }
+
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    }
+  }
+
+  requestAnimationFrame(update);
+}
+
+// ── Skeleton Loading ──
+
+function showSkeletons() {
+  ['kpi-savings-rate', 'kpi-total-budget', 'kpi-total-spending', 'kpi-budget-health'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.innerHTML = '<span class="skeleton" style="display:inline-block;width:80px;height:1.4em">&nbsp;</span>'; }
   });
 }
 
