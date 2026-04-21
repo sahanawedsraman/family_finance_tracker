@@ -1324,13 +1324,6 @@ function initMenu() {
     });
   });
 
-  // Theme toggle in menu
-  document.getElementById('menu-theme').addEventListener('click', () => {
-    toggleTheme();
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    document.getElementById('menu-theme').textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
-  });
-
   // Sign out in menu
   document.getElementById('menu-signout').addEventListener('click', () => {
     closeMenu();
