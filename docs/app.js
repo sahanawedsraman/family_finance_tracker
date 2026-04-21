@@ -631,19 +631,26 @@ function renderTrips() {
   let html = '';
   tripNames.forEach(name => {
     const txns = trips[name];
-    const total = txns.reduce((s, r) => s + Math.abs(parseNum(r.Amount)), 0);
     const dates = txns.map(r => r.Date).filter(Boolean).sort();
     const dateRange = dates.length ? `${dates[0]} — ${dates[dates.length - 1]}` : '';
 
-    // Category breakdown
+    // Calculate gross spent, reimbursements, and net
+    let grossSpent = 0;
+    let reimbursements = 0;
     const cats = {};
+
     txns.forEach(r => {
       const amt = parseNum(r.Amount);
       if (amt < 0) {
+        grossSpent += Math.abs(amt);
         const cat = r.Category || 'Other';
         cats[cat] = (cats[cat] || 0) + Math.abs(amt);
+      } else if (amt > 0) {
+        reimbursements += amt;
       }
     });
+
+    const netCost = grossSpent - reimbursements;
     const sortedCats = Object.entries(cats).sort((a, b) => b[1] - a[1]);
 
     html += `<div class="trip-card">
@@ -652,7 +659,10 @@ function renderTrips() {
           <div class="trip-name">${name}</div>
           <div class="trip-dates">${dateRange} · ${txns.length} transactions</div>
         </div>
-        <div class="trip-total">${fmtNum(total)}</div>
+        <div style="text-align:right">
+          <div class="trip-total">${fmtNum(netCost)}</div>
+          ${reimbursements > 0 ? `<div style="font-size:0.75rem;color:var(--text-muted)">Spent ${fmtNum(grossSpent)} · Got back ${fmtNum(reimbursements)}</div>` : ''}
+        </div>
       </div>
       <div class="trip-categories">
         ${sortedCats.map(([cat, amt]) => `<span class="trip-cat">${cat}: ${fmtNum(amt)}</span>`).join('')}
