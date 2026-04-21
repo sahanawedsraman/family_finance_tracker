@@ -451,7 +451,7 @@ function renderCategoryBreakdown() {
   }
 
   // Include all spending categories (including taxes, retirement, healthcare)
-  const excludeCats = new Set(['Income', 'Transfer', 'Retirement']);
+  const excludeCats = new Set(['Income', 'Transfer', 'Retirement', 'Taxes']);
   const catTotals = {};
   txns.forEach(r => {
     const amt = parseNum(r.Amount);
