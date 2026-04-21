@@ -138,6 +138,21 @@ async function loadAllData() {
 
     populateYearFilter();
     setupFilterListeners();
+
+    // Default to current month
+    const now = new Date();
+    const currentYear = String(now.getFullYear());
+    const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const yearSelect = document.getElementById('filter-year');
+    const monthSelect = document.getElementById('filter-month');
+    if ([...yearSelect.options].some(o => o.value === currentYear)) {
+      yearSelect.value = currentYear;
+      updateMonthOptions();
+      if ([...monthSelect.options].some(o => o.value === currentMonth)) {
+        monthSelect.value = currentMonth;
+      }
+    }
+
     applyFilters();
 
     // Restore tab from URL hash
@@ -328,9 +343,12 @@ function renderKPIs() {
   document.getElementById('kpi-healthcare').innerHTML = `<span class="money">$${breakdownCats.Healthcare.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
   document.getElementById('kpi-invested').innerHTML = `<span class="money">$${breakdownCats.Investment.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
 
-  // MoM change arrows
-  addMomArrow('kpi-spending', discretionarySpending, txns, 'spending');
-  addMomArrow('kpi-income', totalIncome, txns, 'income');
+  // MoM change arrows (only when a specific month is selected)
+  const monthFilter = document.getElementById('filter-month').value;
+  if (monthFilter) {
+    addMomArrow('kpi-spending', discretionarySpending, txns, 'spending');
+    addMomArrow('kpi-income', totalIncome, txns, 'income');
+  }
 }
 
 function addMomArrow(elementId, currentValue, txns, type) {
