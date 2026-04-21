@@ -163,7 +163,7 @@ class TestWriteTransactionsTab:
         # Verify update was called with correct data
         update_args = values.update.call_args
         written_rows = update_args[1]["body"]["values"]
-        assert written_rows[0] == ["Date", "Description", "Amount", "Category", "Person", "Source File", "Type"]
+        assert written_rows[0] == ["Date", "Description", "Amount", "Category", "Person", "Source File", "Type", "Trip"]
         assert len(written_rows) == 3  # header + 2 transactions
 
     def test_writes_empty_transactions(self):

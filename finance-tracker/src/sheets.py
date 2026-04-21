@@ -22,6 +22,7 @@ TAB_KPIS = "KPIs"
 TAB_BUDGET_STATUS = "Budget Status"
 TAB_MANUAL_ENTRY = "Manual Entry"
 TAB_METADATA = "Metadata"
+TAB_TRIPS = "Trips"
 
 ALL_TABS = [
     TAB_TRANSACTIONS,
@@ -32,6 +33,7 @@ ALL_TABS = [
     TAB_BUDGET_STATUS,
     TAB_MANUAL_ENTRY,
     TAB_METADATA,
+    TAB_TRIPS,
 ]
 
 ALL_CATEGORIES = [
@@ -152,6 +154,9 @@ def write_transactions_tab(service, sid: str, transactions: list[Transaction]) -
             ).execute())
 
     logger.info("Transactions: %d existing, %d new, %d total", len(existing), new_count, len(merged))
+
+    # Apply trip dropdown on column H
+    apply_trip_dropdown(service, sid, len(rows))
 
 
 # ── Summary tabs (pure data, no formatting) ──
@@ -319,6 +324,62 @@ def write_metadata(service, sid: str) -> None:
     logger.info("Updated metadata: %s", now)
 
 
+# ── Trips tab ──
+
+def initialize_trips_tab(service, sid: str) -> None:
+    """Set up the Trips reference tab with a header if empty. User adds trip names here."""
+    result = retry_api_call(lambda: service.spreadsheets().values().get(
+        spreadsheetId=sid, range=f"{TAB_TRIPS}!A1:A1"
+    ).execute())
+    if not result.get("values"):
+        _write(service, sid, TAB_TRIPS, [
+            ["Trip Name"],
+            ["(add your trip names here)"],
+        ])
+        logger.info("Initialized Trips tab")
+
+
+def apply_trip_dropdown(service, sid: str, num_txn_rows: int) -> None:
+    """Apply a dropdown on the Trip column (H) of Transactions, pulling values from the Trips tab."""
+    meta = retry_api_call(lambda: service.spreadsheets().get(spreadsheetId=sid).execute())
+    txn_tab_id = None
+    trips_tab_id = None
+    for sheet in meta["sheets"]:
+        title = sheet["properties"]["title"]
+        if title == TAB_TRANSACTIONS:
+            txn_tab_id = sheet["properties"]["sheetId"]
+        elif title == TAB_TRIPS:
+            trips_tab_id = sheet["properties"]["sheetId"]
+
+    if txn_tab_id is None or trips_tab_id is None or num_txn_rows < 2:
+        return
+
+    # Use a formula-based validation referencing the Trips tab
+    request = {
+        "setDataValidation": {
+            "range": {
+                "sheetId": txn_tab_id,
+                "startRowIndex": 1,
+                "endRowIndex": num_txn_rows,
+                "startColumnIndex": 7,  # column H (Trip)
+                "endColumnIndex": 8,
+            },
+            "rule": {
+                "condition": {
+                    "type": "ONE_OF_RANGE",
+                    "values": [{"userEnteredValue": f"={TAB_TRIPS}!A2:A100"}],
+                },
+                "showCustomUi": True,
+                "strict": False,  # allow custom values too
+            },
+        }
+    }
+    retry_api_call(lambda: service.spreadsheets().batchUpdate(
+        spreadsheetId=sid, body={"requests": [request]}
+    ).execute())
+    logger.info("Applied trip dropdown to Transactions column H")
+
+
 # ── Main write function ──
 
 def write_to_sheet(
@@ -338,6 +399,7 @@ def write_to_sheet(
     write_kpis_tab(service, sid, kpis, monthly_metrics)
     write_budget_status_tab(service, sid, monthly_metrics, budgets)
     initialize_manual_entry_tab(service, sid)
+    initialize_trips_tab(service, sid)
     write_metadata(service, sid)
 
     logger.info("All data written to spreadsheet %s", sid)

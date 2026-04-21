@@ -39,6 +39,11 @@ function initAuth() {
     tokenClient.requestAccessToken();
   });
   document.getElementById('btn-privacy').addEventListener('click', togglePrivacy);
+  document.getElementById('btn-theme').addEventListener('click', () => {
+    toggleTheme();
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.getElementById('btn-theme').textContent = isDark ? '☀️' : '🌙';
+  });
   initMenu();
   document.getElementById('btn-home').addEventListener('click', (e) => {
     e.preventDefault();
@@ -272,12 +277,23 @@ function renderKPIs() {
   }
 
   const totalIncome = txns.reduce((s, r) => { const a = parseNum(r.Amount); return a > 0 ? s + a : s; }, 0);
-  const totalExpenses = txns.reduce((s, r) => { const a = parseNum(r.Amount); return a < 0 ? s + Math.abs(a) : s; }, 0);
-  const netSavings = totalIncome - totalExpenses;
-  const savingsRate = (totalIncome > 0 && totalExpenses > 0) ? (netSavings / totalIncome * 100) : 0;
+
+  // Spending = all negative amounts (this is the total outflow)
+  const totalOutflow = txns.reduce((s, r) => { const a = parseNum(r.Amount); return a < 0 ? s + Math.abs(a) : s; }, 0);
+
+  // Discretionary spending = outflow minus taxes, retirement, investment (shown separately in breakdown cards)
+  const nonSpendingCats = new Set(['Taxes', 'Retirement', 'Investment']);
+  const discretionarySpending = txns.reduce((s, r) => {
+    const a = parseNum(r.Amount);
+    const cat = r.Category || 'Other';
+    return (a < 0 && !nonSpendingCats.has(cat)) ? s + Math.abs(a) : s;
+  }, 0);
+
+  const netSavings = totalIncome - totalOutflow;
+  const savingsRate = (totalIncome > 0 && totalOutflow > 0) ? (netSavings / totalIncome * 100) : 0;
 
   document.getElementById('kpi-income').innerHTML = `<span class="money">$${totalIncome.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
-  document.getElementById('kpi-spending').innerHTML = `<span class="money">$${totalExpenses.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
+  document.getElementById('kpi-spending').innerHTML = `<span class="money">$${discretionarySpending.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
 
   const savedColor = netSavings >= 0 ? 'var(--green)' : 'var(--red)';
   document.getElementById('kpi-saved').innerHTML = `<span class="money" style="color:${savedColor}">$${netSavings.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
@@ -905,6 +921,8 @@ function toggleTheme() {
   const saved = localStorage.getItem('theme');
   if (saved === 'dark') {
     document.documentElement.setAttribute('data-theme', 'dark');
+    const btn = document.getElementById('btn-theme');
+    if (btn) btn.textContent = '☀️';
   }
 })();
 
