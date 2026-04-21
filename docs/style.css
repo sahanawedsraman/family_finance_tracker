@@ -124,8 +124,8 @@ header {
 .header-logo {
   height: 40px;
   width: auto;
-  padding: 4px;
-  background: var(--surface2);
+  padding: 6px;
+  background: #2d2a26;
   border-radius: 10px;
 }
 
