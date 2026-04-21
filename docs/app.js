@@ -11,6 +11,7 @@ let rawAnnualData = [];
 let rawCategoryRows = [];
 let rawBudgetData = [];
 let rawTransactionData = [];
+let overviewPerson = '';  // '' = all, 'Joint', 'Raman', 'Sahana'
 
 // ── Google Identity Services ──
 
@@ -244,39 +245,45 @@ function applyFilters() {
   renderKPIs();
   renderMonthlySummary();
   renderCategoryBreakdown();
+  renderTrips();
   renderTransactions();
 }
 
 // ── KPIs ──
 
 function renderKPIs() {
-  const filtered = filterByPeriod(rawMonthlyData, 'Month');
-  const ids = ['kpi-income', 'kpi-spending', 'kpi-saved', 'kpi-savings-rate'];
-  if (!filtered.length) {
-    ids.forEach(id => { document.getElementById(id).innerHTML = '—'; });
+  const ids = ['kpi-income', 'kpi-spending', 'kpi-saved', 'kpi-savings-rate',
+               'kpi-taxes', 'kpi-retirement', 'kpi-healthcare', 'kpi-invested'];
+
+  // Get filtered transactions
+  const prefix = getFilteredMonth();
+  let txns = prefix
+    ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
+    : rawTransactionData;
+
+  // Apply person filter
+  if (overviewPerson) {
+    txns = txns.filter(r => r.Person === overviewPerson);
+  }
+
+  if (!txns.length) {
+    ids.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = '—'; });
     return;
   }
 
-  const totalIncome = filtered.reduce((s, r) => s + (parseNum(r['Total Income']) || 0), 0);
-  const totalExpenses = filtered.reduce((s, r) => s + Math.abs(parseNum(r['Total Expenses']) || 0), 0);
+  const totalIncome = txns.reduce((s, r) => { const a = parseNum(r.Amount); return a > 0 ? s + a : s; }, 0);
+  const totalExpenses = txns.reduce((s, r) => { const a = parseNum(r.Amount); return a < 0 ? s + Math.abs(a) : s; }, 0);
   const netSavings = totalIncome - totalExpenses;
   const savingsRate = (totalIncome > 0 && totalExpenses > 0) ? (netSavings / totalIncome * 100) : 0;
 
   document.getElementById('kpi-income').innerHTML = `<span class="money">$${totalIncome.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
   document.getElementById('kpi-spending').innerHTML = `<span class="money">$${totalExpenses.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
 
-  const savedEl = document.getElementById('kpi-saved');
   const savedColor = netSavings >= 0 ? 'var(--green)' : 'var(--red)';
-  savedEl.innerHTML = `<span class="money" style="color:${savedColor}">$${netSavings.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
-
+  document.getElementById('kpi-saved').innerHTML = `<span class="money" style="color:${savedColor}">$${netSavings.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
   document.getElementById('kpi-savings-rate').textContent = savingsRate.toFixed(1) + '%';
 
-  // Income breakdown from transactions
-  const prefix = getFilteredMonth();
-  const txns = prefix
-    ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
-    : rawTransactionData;
-
+  // Income breakdown
   const breakdownCats = { Taxes: 0, Retirement: 0, Healthcare: 0, Investment: 0 };
   txns.forEach(r => {
     const amt = parseNum(r.Amount);
@@ -418,12 +425,18 @@ function renderAnnualSummary() {
 // ── Category Breakdown ──
 
 function renderCategoryBreakdown() {
-  const excludeCats = new Set(['Income', 'Taxes', 'Retirement', 'Investment', 'Transfer', 'Healthcare', 'Utilities']);
   const prefix = getFilteredMonth();
-  const txns = prefix
+  let txns = prefix
     ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
     : rawTransactionData;
 
+  // Apply person filter
+  if (overviewPerson) {
+    txns = txns.filter(r => r.Person === overviewPerson);
+  }
+
+  // Include all spending categories (including taxes, retirement, healthcare)
+  const excludeCats = new Set(['Income', 'Transfer']);
   const catTotals = {};
   txns.forEach(r => {
     const amt = parseNum(r.Amount);
@@ -576,6 +589,62 @@ function renderBudgetStatus() {
     </tr>`;
   });
   html += '</tbody></table></div>';
+  container.innerHTML = html;
+}
+
+// ── Trips ──
+
+function renderTrips() {
+  const container = document.getElementById('trips-container');
+  if (!container) return;
+
+  // Group transactions by Trip column
+  const trips = {};
+  rawTransactionData.forEach(r => {
+    const trip = (r.Trip || '').trim();
+    if (!trip) return;
+    if (!trips[trip]) trips[trip] = [];
+    trips[trip].push(r);
+  });
+
+  const tripNames = Object.keys(trips).sort();
+  if (!tripNames.length) {
+    container.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem">No trips tagged yet. Add a trip name in the "Trip" column of the Transactions tab in your Google Sheet.</p>';
+    return;
+  }
+
+  let html = '';
+  tripNames.forEach(name => {
+    const txns = trips[name];
+    const total = txns.reduce((s, r) => s + Math.abs(parseNum(r.Amount)), 0);
+    const dates = txns.map(r => r.Date).filter(Boolean).sort();
+    const dateRange = dates.length ? `${dates[0]} — ${dates[dates.length - 1]}` : '';
+
+    // Category breakdown
+    const cats = {};
+    txns.forEach(r => {
+      const amt = parseNum(r.Amount);
+      if (amt < 0) {
+        const cat = r.Category || 'Other';
+        cats[cat] = (cats[cat] || 0) + Math.abs(amt);
+      }
+    });
+    const sortedCats = Object.entries(cats).sort((a, b) => b[1] - a[1]);
+
+    html += `<div class="trip-card">
+      <div class="trip-header">
+        <div>
+          <div class="trip-name">${name}</div>
+          <div class="trip-dates">${dateRange} · ${txns.length} transactions</div>
+        </div>
+        <div class="trip-total">${fmtNum(total)}</div>
+      </div>
+      <div class="trip-categories">
+        ${sortedCats.map(([cat, amt]) => `<span class="trip-cat">${cat}: ${fmtNum(amt)}</span>`).join('')}
+      </div>
+    </div>`;
+  });
+
   container.innerHTML = html;
 }
 
@@ -1250,6 +1319,17 @@ function initMenu() {
   });
 
   // Set initial active (home is set in HTML already)
+
+  // Person filter buttons
+  document.querySelectorAll('.person-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.person-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      overviewPerson = btn.dataset.person;
+      renderKPIs();
+      renderCategoryBreakdown();
+    });
+  });
 }
 
 function switchTab(tabName) {

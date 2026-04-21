@@ -55,6 +55,7 @@
       <div class="menu-items">
         <button class="menu-item active" data-tab="home">🏠 Overview</button>
         <button class="menu-item" data-tab="monthly">📊 Monthly</button>
+        <button class="menu-item" data-tab="trips">✈️ Trips</button>
         <button class="menu-item" data-tab="transactions">📝 Transactions</button>
         <hr class="menu-divider">
         <button class="menu-item" id="menu-theme">🌙 Dark Mode</button>
@@ -78,6 +79,14 @@
 
     <!-- Overview -->
     <div id="tab-home" class="tab-panel active" role="tabpanel">
+      <!-- Person Filter -->
+      <div class="person-filter">
+        <button class="person-btn active" data-person="">All</button>
+        <button class="person-btn" data-person="Joint">Joint</button>
+        <button class="person-btn" data-person="Raman">Raman</button>
+        <button class="person-btn" data-person="Sahana">Sahana</button>
+      </div>
+
       <section class="kpi-grid">
         <div class="kpi-card">
           <div class="kpi-label">Income</div>
@@ -126,6 +135,11 @@
         <div class="chart-wrapper"><canvas id="chart-savings-trend"></canvas></div>
       </div>
       <div id="monthly-table-container"></div>
+    </div>
+
+    <!-- Trips -->
+    <div id="tab-trips" class="tab-panel" role="tabpanel">
+      <div id="trips-container"></div>
     </div>
 
     <!-- Transactions -->

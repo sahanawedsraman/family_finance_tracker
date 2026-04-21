@@ -709,6 +709,69 @@ footer {
 .cat-compare-amount { font-size: 1rem; font-weight: 600; }
 .cat-compare-change { font-size: 0.75rem; margin-top: 0.15rem; }
 
+/* Person Filter */
+.person-filter {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.person-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 0.4rem 1rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.15s;
+}
+
+.person-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.person-btn:hover:not(.active) {
+  background: var(--surface2);
+}
+
+/* Trip Cards */
+.trip-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.trip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.trip-name { font-size: 1rem; font-weight: 600; }
+.trip-dates { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem; }
+.trip-total { font-size: 1.1rem; font-weight: 600; }
+
+.trip-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.trip-cat {
+  background: var(--surface2);
+  border-radius: 6px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   #dashboard { padding: 1rem; }

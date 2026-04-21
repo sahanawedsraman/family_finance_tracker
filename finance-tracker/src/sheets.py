@@ -99,7 +99,7 @@ def _make_txn_key(date_str: str, description: str, amount) -> str:
 
 def read_existing_transactions(service, sid: str) -> list[dict]:
     result = retry_api_call(lambda: service.spreadsheets().values().get(
-        spreadsheetId=sid, range=f"{TAB_TRANSACTIONS}!A:G"
+        spreadsheetId=sid, range=f"{TAB_TRANSACTIONS}!A:H"
     ).execute())
     rows = result.get("values", [])
     if len(rows) < 2:
@@ -131,7 +131,7 @@ def write_transactions_tab(service, sid: str, transactions: list[Transaction]) -
     merged.sort(key=lambda r: r.get("Date", ""), reverse=True)
     _clear(service, sid, TAB_TRANSACTIONS)
 
-    headers = ["Date", "Description", "Amount", "Category", "Person", "Source File", "Type"]
+    headers = ["Date", "Description", "Amount", "Category", "Person", "Source File", "Type", "Trip"]
     rows = [headers] + [[r.get(h, "") for h in headers] for r in merged]
     _write(service, sid, TAB_TRANSACTIONS, rows)
 
