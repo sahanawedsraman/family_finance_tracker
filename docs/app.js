@@ -427,9 +427,13 @@ function renderMonthlySummary() {
 
   // Only show savings trend when multiple months are visible
   const savingsWrapper = document.getElementById('chart-savings-trend')?.closest('.chart-wrapper');
-  if (savingsWrapper) {
+  const chartRow = document.querySelector('#tab-monthly .chart-row');
+  if (savingsWrapper && chartRow) {
     if (multiMonth) {
       savingsWrapper.style.display = '';
+      chartRow.style.gridTemplateColumns = '1fr 1fr';
+      chartRow.style.maxWidth = '';
+      chartRow.style.margin = '';
       createOrUpdateChart('chart-savings-trend', 'line', {
         labels: months,
         datasets: [{
@@ -440,6 +444,9 @@ function renderMonthlySummary() {
       }, { plugins: { title: { display: true, text: 'Net Savings Trend', color: '#e4e6f0' } } });
     } else {
       savingsWrapper.style.display = 'none';
+      chartRow.style.gridTemplateColumns = '1fr';
+      chartRow.style.maxWidth = '700px';
+      chartRow.style.margin = '0 auto';
     }
   }
 
