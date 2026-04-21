@@ -39,10 +39,9 @@ function initAuth() {
     tokenClient.requestAccessToken();
   });
   document.getElementById('btn-privacy').addEventListener('click', togglePrivacy);
-  document.getElementById('btn-theme').addEventListener('click', () => {
+  document.getElementById('theme-switch').addEventListener('change', (e) => {
     toggleTheme();
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    document.getElementById('btn-theme').textContent = isDark ? '☀️' : '🌙';
+    document.querySelector('.toggle-icon').textContent = e.target.checked ? '☀️' : '🌙';
   });
   initMenu();
   document.getElementById('btn-home').addEventListener('click', (e) => {
@@ -921,8 +920,10 @@ function toggleTheme() {
   const saved = localStorage.getItem('theme');
   if (saved === 'dark') {
     document.documentElement.setAttribute('data-theme', 'dark');
-    const btn = document.getElementById('btn-theme');
-    if (btn) btn.textContent = '☀️';
+    const sw = document.getElementById('theme-switch');
+    if (sw) sw.checked = true;
+    const icon = document.querySelector('.toggle-icon');
+    if (icon) icon.textContent = '☀️';
   }
 })();
 

@@ -144,6 +144,48 @@ header h1 {
 .btn-small:hover { background: var(--border); }
 .btn-small:active { transform: scale(0.95); }
 
+/* Theme Toggle Switch */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.theme-toggle input { display: none; }
+
+.toggle-slider {
+  width: 36px;
+  height: 20px;
+  background: var(--border);
+  border-radius: 10px;
+  position: relative;
+  transition: background 0.25s;
+}
+
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.25s;
+}
+
+.theme-toggle input:checked + .toggle-slider {
+  background: var(--accent);
+}
+
+.theme-toggle input:checked + .toggle-slider::after {
+  transform: translateX(16px);
+}
+
+.toggle-icon { font-size: 0.9rem; }
+
 /* Hamburger Menu Button */
 .btn-menu {
   background: none;
