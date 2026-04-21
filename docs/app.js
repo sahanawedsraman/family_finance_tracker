@@ -42,7 +42,6 @@ function initAuth() {
   });
   document.getElementById('btn-privacy').addEventListener('click', togglePrivacy);
   initMenu();
-  initQuickNav();
   document.getElementById('btn-home').addEventListener('click', (e) => {
     e.preventDefault();
     switchTab('home');
@@ -244,31 +243,19 @@ function filterByPeriod(data, monthKey) {
 }
 
 function applyFilters() {
-  renderPeriodLabel();
-  renderDataSummary();
   renderKPIs();
-  renderSparklines();
-  renderSpendingPace();
-  renderCategoryComparison();
   renderMonthlySummary();
-  renderAnnualSummary();
   renderCategoryBreakdown();
-  renderIncomeBreakdown();
-  renderBudgetStatus();
-  renderBudgetProgress();
   renderTransactions();
-  renderRecurring();
-  renderDuplicateWarning();
 }
 
 // ── KPIs ──
 
 function renderKPIs() {
   const filtered = filterByPeriod(rawMonthlyData, 'Month');
+  const ids = ['kpi-income', 'kpi-spending', 'kpi-saved', 'kpi-savings-rate'];
   if (!filtered.length) {
-    ['kpi-savings-rate', 'kpi-total-budget', 'kpi-total-spending', 'kpi-budget-health'].forEach(id => {
-      document.getElementById(id).innerHTML = '<span style="color:var(--text-muted)">—</span>';
-    });
+    ids.forEach(id => { document.getElementById(id).innerHTML = '—'; });
     return;
   }
 
@@ -277,77 +264,31 @@ function renderKPIs() {
   const netSavings = totalIncome - totalExpenses;
   const savingsRate = (totalIncome > 0 && totalExpenses > 0) ? (netSavings / totalIncome * 100) : 0;
 
-  const numMonths = filtered.length;
-  const totalMonths = rawMonthlyData.length || 1;
-  const overallBudget = parseNum(rawKpiRows[1]?.[1]) || 0;
-  const monthlyBudget = overallBudget / totalMonths;
-  const periodBudget = monthlyBudget * numMonths;
+  document.getElementById('kpi-income').innerHTML = `<span class="money">$${totalIncome.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
+  document.getElementById('kpi-spending').innerHTML = `<span class="money">$${totalExpenses.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
 
-  // Budget health: only count spending in categories that have a budget
-  const budgetedCats = new Set(rawBudgetData.map(r => r.Category).filter(Boolean));
-  const excludeCats = new Set(['Income', 'Taxes', 'Retirement', 'Investment', 'Transfer', 'Healthcare', 'Utilities']);
-  const prefix = getFilteredMonth();
-  const txns = prefix
-    ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
-    : rawTransactionData;
-  const budgetedSpending = txns.reduce((s, r) => {
-    const amt = parseNum(r.Amount);
-    const cat = r.Category || 'Other';
-    if (amt < 0 && budgetedCats.has(cat) && !excludeCats.has(cat)) {
-      return s + Math.abs(amt);
-    }
-    return s;
-  }, 0);
-  const budgetHealth = periodBudget > 0 ? (budgetedSpending / periodBudget * 100) : 0;
+  const savedEl = document.getElementById('kpi-saved');
+  const savedColor = netSavings >= 0 ? 'var(--green)' : 'var(--red)';
+  savedEl.innerHTML = `<span class="money" style="color:${savedColor}">$${netSavings.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
 
-  animateCounter('kpi-savings-rate', savingsRate, '%', false);
-  document.getElementById('kpi-total-budget').innerHTML = '<span class="money">$' + periodBudget.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span>';
-  document.getElementById('kpi-total-spending').innerHTML = '<span class="money">$' + totalExpenses.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span>';
+  document.getElementById('kpi-savings-rate').textContent = savingsRate.toFixed(1) + '%';
 
-  // Progress ring for budget health
-  const healthEl = document.getElementById('kpi-budget-health');
-  const healthColor = budgetHealth <= 100 ? 'var(--green)' : 'var(--red)';
-  const pct = Math.min(budgetHealth, 150);
-  const circumference = 2 * Math.PI * 33;
-  const offset = circumference - (Math.min(pct, 100) / 100) * circumference;
-  healthEl.innerHTML = `
-    <div class="progress-ring">
-      <svg width="80" height="80">
-        <circle class="progress-ring-bg" cx="40" cy="40" r="33"/>
-        <circle class="progress-ring-circle" cx="40" cy="40" r="33"
-          stroke="${healthColor}"
-          stroke-dasharray="${circumference}"
-          stroke-dashoffset="${offset}"/>
-      </svg>
-      <div class="progress-ring-label">${budgetHealth.toFixed(0)}%</div>
-    </div>
-  `;
-
-  // Render insights from KPIs tab
+  // Show top insight only
   renderInsights();
 }
 
 function renderInsights() {
   const container = document.getElementById('insights-list');
-  // Find insights in KPI rows — they start after the "Insights & Recommendations" header
+  if (!container) return;
   const insights = [];
   let inInsights = false;
   for (const row of rawKpiRows) {
-    if (row && row[0] && row[0].includes('Insights')) {
-      inInsights = true;
-      continue;
-    }
-    if (inInsights && row && row[0] && row[0].trim()) {
-      insights.push(row[0]);
-    }
+    if (row && row[0] && row[0].includes('Insights')) { inInsights = true; continue; }
+    if (inInsights && row && row[0] && row[0].trim()) insights.push(row[0]);
   }
 
-  if (!insights.length) {
-    container.innerHTML = '';
-    return;
-  }
-
-  container.innerHTML = insights
+  // Show only the top 3 most relevant insights
+  container.innerHTML = insights.slice(0, 3)
     .map(i => `<div class="insight-item">${i}</div>`)
     .join('');
 }
@@ -463,91 +404,59 @@ function renderAnnualSummary() {
 
 function renderCategoryBreakdown() {
   const excludeCats = new Set(['Income', 'Taxes', 'Retirement', 'Investment', 'Transfer', 'Healthcare', 'Utilities']);
-
-  // Build category data from transactions
   const prefix = getFilteredMonth();
   const txns = prefix
     ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
     : rawTransactionData;
 
   const catTotals = {};
-  const catByMonth = {};
   txns.forEach(r => {
     const amt = parseNum(r.Amount);
     const cat = r.Category || 'Other';
     if (amt >= 0 || excludeCats.has(cat)) return;
-    const absAmt = Math.abs(amt);
-    catTotals[cat] = (catTotals[cat] || 0) + absAmt;
-    const month = (r.Date || '').substring(0, 7);
-    if (month) {
-      if (!catByMonth[month]) catByMonth[month] = {};
-      catByMonth[month][cat] = (catByMonth[month][cat] || 0) + absAmt;
-    }
+    catTotals[cat] = (catTotals[cat] || 0) + Math.abs(amt);
   });
 
   const categories = Object.keys(catTotals).sort((a, b) => catTotals[b] - catTotals[a]);
-
-  // Render category chips
   const chipsContainer = document.getElementById('category-chips-container');
+
   if (!categories.length) {
-    chipsContainer.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem">No spending data found.</p>';
+    if (chipsContainer) chipsContainer.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem">No spending data found.</p>';
     return;
   }
 
   const colors = generateColors(categories.length);
   const totalSpending = Object.values(catTotals).reduce((a, b) => a + b, 0);
+  const totals = categories.map(c => catTotals[c]);
 
-  let chipsHtml = '<div class="top-cats-row" style="margin-bottom:1.5rem">';
-  categories.forEach((cat, i) => {
-    const pct = totalSpending > 0 ? (catTotals[cat] / totalSpending * 100).toFixed(1) : 0;
-    chipsHtml += `<div class="top-cat-chip" style="border-left: 3px solid ${colors[i]}">
-      <span class="top-cat-name">${cat}</span>
-      <span class="top-cat-amt">${fmtNum(catTotals[cat])}</span>
-      <span style="font-size:0.7rem;color:var(--text-muted)">${pct}%</span>
-    </div>`;
-  });
-  chipsHtml += '</div>';
-  chipsContainer.innerHTML = chipsHtml;
+  // Category chips
+  if (chipsContainer) {
+    let html = '<div class="top-cats-row" style="margin-bottom:1.5rem">';
+    categories.forEach((cat, i) => {
+      const pct = totalSpending > 0 ? (catTotals[cat] / totalSpending * 100).toFixed(1) : 0;
+      html += `<div class="top-cat-chip" style="border-left: 3px solid ${colors[i]}">
+        <span class="top-cat-name">${cat}</span>
+        <span class="top-cat-amt">${fmtNum(catTotals[cat])}</span>
+        <span style="font-size:0.7rem;color:var(--text-muted)">${pct}%</span>
+      </div>`;
+    });
+    html += '</div>';
+    chipsContainer.innerHTML = html;
+  }
 
   // Pie chart
-  const totals = categories.map(c => catTotals[c]);
   createOrUpdateChart('chart-category-pie', 'pie', {
     labels: categories,
     datasets: [{ data: totals, backgroundColor: colors }],
   }, { plugins: { title: { display: true, text: 'Spending by Category', color: '#e4e6f0' } } });
 
-  // Bar chart by month
-  const months = Object.keys(catByMonth).sort();
-  const datasets = categories.map((cat, ci) => ({
-    label: cat,
-    data: months.map(m => catByMonth[m]?.[cat] || 0),
-    backgroundColor: colors[ci],
-  }));
-
-  createOrUpdateChart('chart-category-bar', 'bar', {
-    labels: months,
-    datasets,
-  }, {
-    plugins: { title: { display: true, text: 'Category Spending by Month', color: '#e4e6f0' } },
-    scales: { x: { stacked: true }, y: { stacked: true } },
-  });
-
-  // Ranking chart — horizontal bar sorted by spending
-  const rankColors = categories.map((_, i) => colors[i]);
+  // Ranking chart
   createOrUpdateChart('chart-category-ranking', 'bar', {
     labels: categories,
-    datasets: [{
-      label: 'Total Spent',
-      data: totals,
-      backgroundColor: rankColors,
-      borderRadius: 4,
-    }],
+    datasets: [{ label: 'Total Spent', data: totals, backgroundColor: colors, borderRadius: 4 }],
   }, {
     indexAxis: 'y',
-    plugins: {
-      title: { display: true, text: 'Spending Ranking', color: '#e4e6f0' },
-      legend: { display: false },
-    },
+    plugins: { title: { display: true, text: 'Spending Ranking', color: '#e4e6f0' }, legend: { display: false } },
   });
 }
 

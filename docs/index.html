@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Sign-in screen -->
+  <!-- Sign-in -->
   <div id="auth-screen" class="screen">
     <div class="auth-card">
       <h1><img src="logo.png" alt="Logo" class="app-logo"> Family Finance Tracker</h1>
@@ -46,7 +46,7 @@
       </div>
     </header>
 
-    <!-- Slide-out Menu -->
+    <!-- Menu -->
     <div id="menu-overlay" class="menu-overlay"></div>
     <nav id="side-menu" class="side-menu">
       <div class="menu-header">
@@ -55,10 +55,8 @@
       </div>
       <div class="menu-items">
         <button class="menu-item active" data-tab="home">🏠 Overview</button>
-        <button class="menu-item" data-tab="monthly">📊 Monthly Summary</button>
-        <button class="menu-item" data-tab="annual">📅 Annual Summary</button>
+        <button class="menu-item" data-tab="monthly">📊 Monthly</button>
         <button class="menu-item" data-tab="categories">🏷️ Categories</button>
-        <button class="menu-item" data-tab="budget">💰 Budget Status</button>
         <button class="menu-item" data-tab="transactions">📝 Transactions</button>
         <hr class="menu-divider">
         <button class="menu-item" id="menu-theme">🌙 Dark Mode</button>
@@ -66,125 +64,71 @@
       </div>
     </nav>
 
-    <!-- Global Time Filter -->
-    <div class="time-filter" aria-label="Time period filter">
-      <select id="filter-year" aria-label="Filter by year">
-        <option value="">All Years</option>
-      </select>
+    <!-- Time Filter -->
+    <div class="time-filter">
+      <select id="filter-year" aria-label="Filter by year"><option value="">All Years</option></select>
       <select id="filter-month" aria-label="Filter by month">
         <option value="">All Months</option>
-        <option value="01">January</option>
-        <option value="02">February</option>
-        <option value="03">March</option>
-        <option value="04">April</option>
-        <option value="05">May</option>
-        <option value="06">June</option>
-        <option value="07">July</option>
-        <option value="08">August</option>
-        <option value="09">September</option>
-        <option value="10">October</option>
-        <option value="11">November</option>
-        <option value="12">December</option>
+        <option value="01">January</option><option value="02">February</option>
+        <option value="03">March</option><option value="04">April</option>
+        <option value="05">May</option><option value="06">June</option>
+        <option value="07">July</option><option value="08">August</option>
+        <option value="09">September</option><option value="10">October</option>
+        <option value="11">November</option><option value="12">December</option>
       </select>
     </div>
 
-    <!-- Tab Panels -->
+    <!-- Overview -->
     <div id="tab-home" class="tab-panel active" role="tabpanel">
-      <!-- Quick Month Nav -->
-      <div class="quick-nav">
-        <button id="btn-prev-month" class="btn-small">← Prev</button>
-        <span id="current-period-label">All Time</span>
-        <button id="btn-next-month" class="btn-small">Next →</button>
-      </div>
-
-      <!-- Data Summary Bar -->
-      <div id="data-summary" class="data-summary"></div>
-
-      <!-- KPI Cards -->
-      <section id="kpi-section" class="kpi-grid" aria-label="Key Performance Indicators">
+      <section class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Income</div>
+          <div class="kpi-value" id="kpi-income">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Spending</div>
+          <div class="kpi-value" id="kpi-spending">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Saved</div>
+          <div class="kpi-value" id="kpi-saved">—</div>
+        </div>
         <div class="kpi-card">
           <div class="kpi-label">Savings Rate</div>
           <div class="kpi-value" id="kpi-savings-rate">—</div>
-          <canvas id="spark-savings" class="sparkline" width="120" height="30"></canvas>
         </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Total Budget</div>
-          <div class="kpi-value" id="kpi-total-budget">—</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Total Spending</div>
-          <div class="kpi-value" id="kpi-total-spending">—</div>
-          <canvas id="spark-spending" class="sparkline" width="120" height="30"></canvas>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Budget Health</div>
-          <div class="kpi-value" id="kpi-budget-health">—</div>
-        </div>
-      </section>
-
-      <!-- Spending Pace Card -->
-      <section id="spending-pace" class="spending-pace-card" aria-label="Spending pace"></section>
-
-      <!-- Category vs Last Month -->
-      <section id="category-comparison" class="category-comparison" aria-label="Category comparison vs last month"></section>
-
-      <!-- Insights -->
-      <section id="insights-section" class="insights-container" aria-label="Financial Insights">
-        <div id="insights-list"></div>
       </section>
     </div>
 
+    <!-- Monthly -->
     <div id="tab-monthly" class="tab-panel" role="tabpanel">
       <div class="chart-row">
-        <div class="chart-wrapper"><canvas id="chart-income-expenses" aria-label="Income vs Expenses chart"></canvas></div>
-        <div class="chart-wrapper"><canvas id="chart-savings-trend" aria-label="Savings trend chart"></canvas></div>
+        <div class="chart-wrapper"><canvas id="chart-income-expenses"></canvas></div>
+        <div class="chart-wrapper"><canvas id="chart-savings-trend"></canvas></div>
       </div>
       <div id="monthly-table-container"></div>
     </div>
 
-    <div id="tab-annual" class="tab-panel" role="tabpanel">
-      <div class="chart-row">
-        <div class="chart-wrapper"><canvas id="chart-annual-income-expenses" aria-label="Annual income vs expenses chart"></canvas></div>
-        <div class="chart-wrapper"><canvas id="chart-annual-savings" aria-label="Annual savings chart"></canvas></div>
-      </div>
-      <div id="annual-table-container"></div>
-    </div>
-
+    <!-- Categories -->
     <div id="tab-categories" class="tab-panel" role="tabpanel">
       <div id="category-chips-container"></div>
       <div class="chart-row">
-        <div class="chart-wrapper"><canvas id="chart-category-pie" aria-label="Spending by category pie chart"></canvas></div>
-        <div class="chart-wrapper"><canvas id="chart-category-bar" aria-label="Category spending bar chart"></canvas></div>
-      </div>
-      <div class="chart-row" style="margin-top:1rem">
-        <div class="chart-wrapper"><canvas id="chart-income-breakdown" aria-label="Income breakdown donut"></canvas></div>
-        <div class="chart-wrapper"><canvas id="chart-category-ranking" aria-label="Category spending ranking"></canvas></div>
+        <div class="chart-wrapper"><canvas id="chart-category-pie"></canvas></div>
+        <div class="chart-wrapper"><canvas id="chart-category-ranking"></canvas></div>
       </div>
     </div>
 
-    <div id="tab-budget" class="tab-panel" role="tabpanel">
-      <div id="budget-progress-container"></div>
-      <div id="budget-table-container" style="margin-top: 1.5rem;"></div>
-    </div>
-
+    <!-- Transactions -->
     <div id="tab-transactions" class="tab-panel" role="tabpanel">
-      <div id="recurring-container"></div>
-      <div id="duplicate-warning"></div>
       <div class="table-controls">
-        <input type="text" id="txn-search" placeholder="Search description..." aria-label="Search transactions">
-        <select id="txn-person-filter" aria-label="Filter by person">
-          <option value="">All People</option>
-        </select>
-        <select id="txn-category-filter" aria-label="Filter by category">
-          <option value="">All Categories</option>
-        </select>
+        <input type="text" id="txn-search" placeholder="Search..." aria-label="Search transactions">
+        <select id="txn-person-filter" aria-label="Filter by person"><option value="">All People</option></select>
+        <select id="txn-category-filter" aria-label="Filter by category"><option value="">All Categories</option></select>
         <select id="txn-type-filter" aria-label="Filter by type">
           <option value="">All Types</option>
           <option value="debit">Expenses</option>
           <option value="credit">Income</option>
         </select>
-        <input type="number" id="txn-min-amount" placeholder="Min $" aria-label="Minimum amount" style="width:90px">
-        <input type="number" id="txn-max-amount" placeholder="Max $" aria-label="Maximum amount" style="width:90px">
       </div>
       <div id="transactions-table-container"></div>
     </div>
