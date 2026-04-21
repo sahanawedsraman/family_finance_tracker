@@ -346,45 +346,46 @@ function renderKPIs() {
   // MoM change arrows (only when a specific month is selected)
   const monthFilter = document.getElementById('filter-month').value;
   if (monthFilter) {
-    addMomArrow('kpi-spending', discretionarySpending, txns, 'spending');
-    addMomArrow('kpi-income', totalIncome, txns, 'income');
+    const yearFilter = document.getElementById('filter-year').value;
+    let prevYear = parseInt(yearFilter) || new Date().getFullYear();
+    let prevMon = parseInt(monthFilter) - 1;
+    if (prevMon < 1) { prevMon = 12; prevYear--; }
+    const prevPrefix = `${prevYear}-${String(prevMon).padStart(2, '0')}`;
+
+    let prevTxns = rawTransactionData.filter(r => (r.Date || '').startsWith(prevPrefix));
+    if (overviewPerson) prevTxns = prevTxns.filter(r => r.Person === overviewPerson);
+
+    const prevIncome = prevTxns.reduce((s, r) => { const a = parseNum(r.Amount); return a > 0 ? s + a : s; }, 0);
+    const prevSpending = prevTxns.reduce((s, r) => {
+      const a = parseNum(r.Amount); const c = r.Category || 'Other';
+      return (a < 0 && !nonSpendingCats.has(c)) ? s + Math.abs(a) : s;
+    }, 0);
+
+    const prevBreakdown = { Taxes: 0, Retirement: 0, Healthcare: 0, Investment: 0 };
+    prevTxns.forEach(r => {
+      const a = parseNum(r.Amount); const c = r.Category || '';
+      if (a < 0 && c in prevBreakdown) prevBreakdown[c] += Math.abs(a);
+    });
+
+    _addArrow('kpi-income', totalIncome, prevIncome, false);
+    _addArrow('kpi-spending', discretionarySpending, prevSpending, true);
+    _addArrow('kpi-taxes', breakdownCats.Taxes, prevBreakdown.Taxes, true);
+    _addArrow('kpi-retirement', breakdownCats.Retirement, prevBreakdown.Retirement, true);
+    _addArrow('kpi-healthcare', breakdownCats.Healthcare, prevBreakdown.Healthcare, true);
+    _addArrow('kpi-invested', breakdownCats.Investment, prevBreakdown.Investment, false);
   }
 }
 
-function addMomArrow(elementId, currentValue, txns, type) {
-  const el = document.getElementById(elementId);
+function _addArrow(elId, current, previous, upIsBad) {
+  if (previous <= 0) return;
+  const el = document.getElementById(elId);
   if (!el) return;
-
-  // Find previous month's value
-  const months = new Set();
-  txns.forEach(r => { const m = (r.Date || '').substring(0, 7); if (m) months.add(m); });
-  const sortedMonths = [...months].sort();
-  if (sortedMonths.length < 2) return;
-
-  const prevMonth = sortedMonths[sortedMonths.length - 2];
-  const prevTxns = rawTransactionData.filter(r => (r.Date || '').startsWith(prevMonth));
-  let prevFiltered = overviewPerson ? prevTxns.filter(r => r.Person === overviewPerson) : prevTxns;
-
-  let prevValue = 0;
-  if (type === 'spending') {
-    const nonSpending = new Set(['Taxes', 'Retirement', 'Investment', 'Income', 'Transfer']);
-    prevValue = prevFiltered.reduce((s, r) => {
-      const a = parseNum(r.Amount); const c = r.Category || 'Other';
-      return (a < 0 && !nonSpending.has(c)) ? s + Math.abs(a) : s;
-    }, 0);
-  } else {
-    prevValue = prevFiltered.reduce((s, r) => { const a = parseNum(r.Amount); return a > 0 ? s + a : s; }, 0);
-  }
-
-  if (prevValue <= 0) return;
-  const pctChange = ((currentValue - prevValue) / prevValue * 100);
-  const isUp = pctChange > 0;
+  const pct = ((current - previous) / previous * 100);
+  if (Math.abs(pct) < 1) return;
+  const isUp = pct > 0;
   const arrow = isUp ? '↑' : '↓';
-  const color = (type === 'spending') ? (isUp ? 'var(--red)' : 'var(--green)') : (isUp ? 'var(--green)' : 'var(--red)');
-
-  if (Math.abs(pctChange) > 1) {
-    el.innerHTML += `<div style="font-size:0.65rem;color:${color};margin-top:0.15rem">${arrow} ${Math.abs(pctChange).toFixed(0)}% vs last month</div>`;
-  }
+  const color = (upIsBad ? (isUp ? 'var(--red)' : 'var(--green)') : (isUp ? 'var(--green)' : 'var(--red)'));
+  el.innerHTML += `<div style="font-size:0.65rem;color:${color};margin-top:0.15rem">${arrow} ${Math.abs(pct).toFixed(0)}% vs last month</div>`;
 }
 
 function renderInsights() {
