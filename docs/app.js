@@ -37,9 +37,6 @@ function initAuth() {
   document.getElementById('btn-signin').addEventListener('click', () => {
     tokenClient.requestAccessToken();
   });
-  document.getElementById('btn-refresh').addEventListener('click', () => {
-    if (accessToken) loadAllData();
-  });
   document.getElementById('btn-privacy').addEventListener('click', togglePrivacy);
   initMenu();
   document.getElementById('btn-home').addEventListener('click', (e) => {
@@ -126,7 +123,8 @@ async function loadAllData() {
     rawAnnualData = parseRows(annualRows);
     rawCategoryRows = categoryRows;
     rawBudgetData = parseRows(budgetRows);
-    rawTransactionData = parseRows(txnRows);
+    rawTransactionData = parseRows(txnRows).filter(r => (r.Date || '') >= '2026-01-01');
+    rawMonthlyData = rawMonthlyData.filter(r => (r.Month || '') >= '2026-01');
 
     // Display last updated
     const metaData = parseRows(metaRows);
@@ -273,8 +271,25 @@ function renderKPIs() {
 
   document.getElementById('kpi-savings-rate').textContent = savingsRate.toFixed(1) + '%';
 
-  // Show top insight only
-  renderInsights();
+  // Income breakdown from transactions
+  const prefix = getFilteredMonth();
+  const txns = prefix
+    ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
+    : rawTransactionData;
+
+  const breakdownCats = { Taxes: 0, Retirement: 0, Healthcare: 0, Investment: 0 };
+  txns.forEach(r => {
+    const amt = parseNum(r.Amount);
+    const cat = r.Category || '';
+    if (amt < 0 && cat in breakdownCats) {
+      breakdownCats[cat] += Math.abs(amt);
+    }
+  });
+
+  document.getElementById('kpi-taxes').innerHTML = `<span class="money">$${breakdownCats.Taxes.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
+  document.getElementById('kpi-retirement').innerHTML = `<span class="money">$${breakdownCats.Retirement.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
+  document.getElementById('kpi-healthcare').innerHTML = `<span class="money">$${breakdownCats.Healthcare.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
+  document.getElementById('kpi-invested').innerHTML = `<span class="money">$${breakdownCats.Investment.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
 }
 
 function renderInsights() {
@@ -418,45 +433,17 @@ function renderCategoryBreakdown() {
   });
 
   const categories = Object.keys(catTotals).sort((a, b) => catTotals[b] - catTotals[a]);
-  const chipsContainer = document.getElementById('category-chips-container');
-
-  if (!categories.length) {
-    if (chipsContainer) chipsContainer.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem">No spending data found.</p>';
-    return;
-  }
+  if (!categories.length) return;
 
   const colors = generateColors(categories.length);
-  const totalSpending = Object.values(catTotals).reduce((a, b) => a + b, 0);
   const totals = categories.map(c => catTotals[c]);
 
-  // Category chips
-  if (chipsContainer) {
-    let html = '<div class="top-cats-row" style="margin-bottom:1.5rem">';
-    categories.forEach((cat, i) => {
-      const pct = totalSpending > 0 ? (catTotals[cat] / totalSpending * 100).toFixed(1) : 0;
-      html += `<div class="top-cat-chip" style="border-left: 3px solid ${colors[i]}">
-        <span class="top-cat-name">${cat}</span>
-        <span class="top-cat-amt">${fmtNum(catTotals[cat])}</span>
-        <span style="font-size:0.7rem;color:var(--text-muted)">${pct}%</span>
-      </div>`;
-    });
-    html += '</div>';
-    chipsContainer.innerHTML = html;
-  }
-
-  // Pie chart
-  createOrUpdateChart('chart-category-pie', 'pie', {
-    labels: categories,
-    datasets: [{ data: totals, backgroundColor: colors }],
-  }, { plugins: { title: { display: true, text: 'Spending by Category', color: '#e4e6f0' } } });
-
-  // Ranking chart
   createOrUpdateChart('chart-category-ranking', 'bar', {
     labels: categories,
     datasets: [{ label: 'Total Spent', data: totals, backgroundColor: colors, borderRadius: 4 }],
   }, {
     indexAxis: 'y',
-    plugins: { title: { display: true, text: 'Spending Ranking', color: '#e4e6f0' }, legend: { display: false } },
+    plugins: { title: { display: true, text: 'Spending by Category', color: '#e4e6f0' }, legend: { display: false } },
   });
 }
 
@@ -611,8 +598,6 @@ function renderTransactions() {
     document.getElementById('txn-person-filter').addEventListener('change', renderTransactions);
     document.getElementById('txn-category-filter').addEventListener('change', renderTransactions);
     document.getElementById('txn-type-filter').addEventListener('change', renderTransactions);
-    document.getElementById('txn-min-amount').addEventListener('input', renderTransactions);
-    document.getElementById('txn-max-amount').addEventListener('input', renderTransactions);
     txnFiltersInitialized = true;
   }
 
@@ -620,22 +605,16 @@ function renderTransactions() {
   const person = document.getElementById('txn-person-filter').value;
   const category = document.getElementById('txn-category-filter').value;
   const txnType = document.getElementById('txn-type-filter').value;
-  const minAmt = parseFloat(document.getElementById('txn-min-amount').value);
-  const maxAmt = parseFloat(document.getElementById('txn-max-amount').value);
 
   const filtered = periodFiltered.filter(r => {
     if (person && r.Person !== person) return false;
     if (category && r.Category !== category) return false;
     if (txnType && r.Type !== txnType) return false;
     if (search && !r.Description?.toLowerCase().includes(search)) return false;
-    const amt = Math.abs(parseNum(r.Amount));
-    if (!isNaN(minAmt) && amt < minAmt) return false;
-    if (!isNaN(maxAmt) && amt > maxAmt) return false;
     return true;
   });
 
   currentFilteredTxns = filtered;
-  renderTopCategories(filtered);
   renderTransactionTable(sortTransactions(filtered));
 }
 

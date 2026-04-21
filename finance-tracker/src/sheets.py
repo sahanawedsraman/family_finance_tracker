@@ -310,7 +310,7 @@ def read_manual_entries(service, sid: str) -> list[Transaction]:
 
 def write_metadata(service, sid: str) -> None:
     _clear(service, sid, TAB_METADATA)
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = datetime.now().strftime("%Y-%m-%d %I:%M %p")
     _write(service, sid, TAB_METADATA, [
         ["Key", "Value"],
         ["Last Updated", now],

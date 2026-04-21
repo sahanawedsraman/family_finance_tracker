@@ -42,7 +42,6 @@
       </div>
       <div class="header-right">
         <button id="btn-privacy" class="btn-small" aria-label="Toggle privacy">👁️</button>
-        <button id="btn-refresh" class="btn-small" aria-label="Refresh data">🔄</button>
       </div>
     </header>
 
@@ -56,7 +55,6 @@
       <div class="menu-items">
         <button class="menu-item active" data-tab="home">🏠 Overview</button>
         <button class="menu-item" data-tab="monthly">📊 Monthly</button>
-        <button class="menu-item" data-tab="categories">🏷️ Categories</button>
         <button class="menu-item" data-tab="transactions">📝 Transactions</button>
         <hr class="menu-divider">
         <button class="menu-item" id="menu-theme">🌙 Dark Mode</button>
@@ -98,6 +96,27 @@
           <div class="kpi-value" id="kpi-savings-rate">—</div>
         </div>
       </section>
+      <section id="income-breakdown" class="kpi-grid" style="margin-top:1rem">
+        <div class="kpi-card">
+          <div class="kpi-label">Taxes Paid</div>
+          <div class="kpi-value" id="kpi-taxes">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Retirement</div>
+          <div class="kpi-value" id="kpi-retirement">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Healthcare</div>
+          <div class="kpi-value" id="kpi-healthcare">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Invested</div>
+          <div class="kpi-value" id="kpi-invested">—</div>
+        </div>
+      </section>
+      <div class="chart-wrapper" style="margin-top:1rem">
+        <canvas id="chart-category-ranking"></canvas>
+      </div>
     </div>
 
     <!-- Monthly -->
@@ -107,15 +126,6 @@
         <div class="chart-wrapper"><canvas id="chart-savings-trend"></canvas></div>
       </div>
       <div id="monthly-table-container"></div>
-    </div>
-
-    <!-- Categories -->
-    <div id="tab-categories" class="tab-panel" role="tabpanel">
-      <div id="category-chips-container"></div>
-      <div class="chart-row">
-        <div class="chart-wrapper"><canvas id="chart-category-pie"></canvas></div>
-        <div class="chart-wrapper"><canvas id="chart-category-ranking"></canvas></div>
-      </div>
     </div>
 
     <!-- Transactions -->
