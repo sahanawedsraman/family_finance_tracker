@@ -153,11 +153,32 @@ def _rows_to_transactions(df: pd.DataFrame, col_map: dict[str, str | None]) -> l
     return transactions
 
 
+def _find_header_row(path: str) -> int:
+    """Find the row containing actual column headers (Date, Description, Amount).
+    Some bank CSVs have summary rows before the real data."""
+    try:
+        with open(path, 'r', errors='replace') as f:
+            for i, line in enumerate(f):
+                lower = line.lower()
+                if 'date' in lower and ('description' in lower or 'memo' in lower):
+                    return i
+                if i > 20:  # don't scan too far
+                    break
+    except Exception:
+        pass
+    return 0  # default to first row
+
+
 def parse_csv(path: str) -> list[Transaction]:
     """Parse a CSV bank/credit card statement using pandas."""
     try:
-        df = pd.read_csv(path, on_bad_lines="skip")
+        header_row = _find_header_row(path)
+        df = pd.read_csv(path, header=header_row, on_bad_lines="skip")
         col_map = _detect_columns(df)
+        if not col_map.get("date") or not col_map.get("description"):
+            # Try without skipping rows as fallback
+            df = pd.read_csv(path, on_bad_lines="skip")
+            col_map = _detect_columns(df)
         return _rows_to_transactions(df, col_map)
     except Exception:
         logger.warning("Failed to parse CSV: %s", path, exc_info=True)
