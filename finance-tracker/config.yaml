@@ -26,6 +26,7 @@ categories:
   Investment: ["fidelity", "fid bkg svc", "vanguard", "schwab", "brokerage", "etrade", "robinhood"]
   Retirement: ["401k", "403b", "ira", "pension", "roth"]
   Insurance: ["insurance", "geico", "allstate", "progressive", "state farm", "liberty mutual", "spot pet"]
+  Transfer: ["chase credit crd", "discover payment", "credit card payment", "payment thank you", "autopay", "epay", "online payment", "zelle", "venmo", "wire transfer", "ach transfer", "transfer to", "transfer from"]
   Childcare: ["daycare", "preschool", "childcare", "babysit", "petsmart"]
 
 budgets:
