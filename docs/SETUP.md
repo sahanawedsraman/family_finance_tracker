@@ -1,87 +1,82 @@
-# Finance Tracker Dashboard — Setup Guide
+# Dashboard Setup Guide
 
-## How It Works
+## Architecture
 
 ```
-Your laptop (CLI)  →  Google Sheets  →  GitHub Pages (dashboard)
+Your laptop (CLI)  →  Google Sheets (database)  →  GitHub Pages (dashboard)
 ```
 
-- The Python CLI runs on your laptop to parse statements and write to Google Sheets
-- The GitHub Pages dashboard reads from that same Sheet via Google's API
-- Access is restricted to Google accounts you whitelist
+- CLI runs locally, parses CSVs, writes to Google Sheets
+- Dashboard is a static site that reads from the Sheet via Google's API
+- Access controlled by Google OAuth (only whitelisted accounts can sign in)
 
-## Step-by-Step Setup
+## One-Time Setup
 
-### 1. Create a Web OAuth Client
+### 1. Google Cloud Project
 
-You need a **separate** OAuth client for the web dashboard (your existing `credentials.json` is for the desktop CLI).
+1. Go to [console.cloud.google.com](https://console.cloud.google.com)
+2. Create a new project (or use existing)
+3. Enable **Google Drive API** and **Google Sheets API**
 
-1. Go to [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials)
-2. Use the same project as your CLI (`extreme-core-492201-e6`)
-3. Click **Create Credentials → OAuth client ID**
-4. Application type: **Web application**
-5. Name: `Finance Dashboard`
-6. Authorized JavaScript origins: `https://YOUR_USERNAME.github.io`
-7. Authorized redirect URIs: `https://YOUR_USERNAME.github.io`
-8. Click **Create**
-9. Copy the **Client ID** (you do NOT need the client secret)
+### 2. CLI Credentials (Desktop OAuth)
 
-### 2. Restrict Access to Your Accounts
+1. Go to Credentials → Create Credentials → OAuth client ID
+2. Type: **Desktop application**
+3. Download JSON → save as `finance-tracker/credentials.json`
 
-1. Go to [OAuth consent screen](https://console.cloud.google.com/apis/credentials/consent)
-2. Keep the app in **Testing** mode (do NOT publish it)
-3. Under **Test users**, add:
-   - Your Google email
-   - Your wife's Google email
-4. Only these accounts can sign in. Anyone else gets blocked by Google.
+### 3. Dashboard Credentials (Web OAuth)
 
-### 3. Enable the Sheets API
+1. Create another OAuth client ID
+2. Type: **Web application**
+3. Authorized JavaScript origins: `https://YOUR_USERNAME.github.io`
+4. Authorized redirect URIs: `https://YOUR_USERNAME.github.io`
+5. Copy the Client ID into `docs/config.js`
 
-1. Go to [APIs & Services → Library](https://console.cloud.google.com/apis/library)
-2. Search for **Google Sheets API**
-3. Make sure it's **Enabled** (it probably already is from the CLI setup)
+### 4. Restrict Access
 
-### 4. Share the Google Sheet
+1. Go to OAuth consent screen
+2. Keep in **Testing** mode
+3. Add your email and your partner's email as test users
 
-1. Open your Google Sheet
-2. Click **Share**
-3. Add your wife's Google email as a **Viewer**
+### 5. Google Drive Setup
 
-### 5. Configure the Dashboard
+1. Create a folder for statements
+2. Create subfolders for each person (e.g., Raman/, Sahana/, Joint/)
+3. Copy the folder ID from the URL into `config.yaml`
 
-Edit `docs/config.js`:
+### 6. Configuration
 
-```js
-const CONFIG = {
-  GOOGLE_CLIENT_ID: 'paste-your-web-client-id-here.apps.googleusercontent.com',
-  SPREADSHEET_ID: 'your-sheet-id-from-the-url',
-  // ... rest stays the same
-};
+Copy `config.yaml.example` to `config.yaml`:
+- Set `drive_folder_id` to your Drive folder
+- Set `sheet_id` to `null` (auto-creates on first run)
+- Configure persons, categories, and budgets
+
+### 7. First Run
+
+```bash
+cd finance-tracker
+pip install -r requirements.txt
+python main.py
 ```
 
-### 6. Deploy to GitHub Pages
+This will open a browser for Google sign-in, create the Sheet, and process any files.
 
-1. Push this repo to GitHub
-2. Go to **Settings → Pages**
-3. Source: **Deploy from a branch**
-4. Branch: `main`, folder: `/docs`
-5. Save — your site will be at `https://YOUR_USERNAME.github.io/REPO_NAME/`
+### 8. Deploy Dashboard
 
-### 7. Update Authorized Origins
+1. Push to GitHub
+2. Settings → Pages → Branch: your branch, folder: `/docs`
+3. Share the Google Sheet with your partner (Viewer)
 
-If your GitHub Pages URL includes the repo name (e.g., `https://user.github.io/finance-tracker/`), go back to the OAuth client settings and make sure the origin matches:
-- `https://user.github.io` (the origin, without the path)
+## Config Files
 
-## Security Checklist
+- `finance-tracker/config.yaml` — CLI config (categories, budgets, persons)
+- `finance-tracker/credentials.json` — Desktop OAuth (never commit)
+- `docs/config.js` — Dashboard config (Web OAuth client ID, Sheet ID)
 
-- [ ] `credentials.json` and `token.json` are in `.gitignore` (never committed)
-- [ ] Web OAuth client has NO client secret in frontend code
-- [ ] OAuth consent screen is in **Testing** mode with only your emails
-- [ ] Google Sheet is shared only with your accounts
-- [ ] The dashboard requests **read-only** scope (`spreadsheets.readonly`)
+## Security
 
-## Daily Usage
-
-1. Upload new bank statements to your Google Drive folder
-2. Run the CLI on your laptop: `cd finance-tracker && python main.py`
-3. Open the dashboard on any device — data is already there
+- `credentials.json` and `token.json` are in `.gitignore`
+- Web OAuth client ID is safe in frontend code (not a secret)
+- OAuth consent screen in Testing mode = only whitelisted emails
+- Dashboard uses read-only Sheets scope
+- Google Sheet shared only with your accounts
