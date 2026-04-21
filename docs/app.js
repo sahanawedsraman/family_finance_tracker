@@ -408,12 +408,15 @@ function renderInsights() {
 
 function renderMonthlySummary() {
   const data = filterByPeriod(rawMonthlyData, 'Month');
+  const monthFilter = document.getElementById('filter-month').value;
+  const multiMonth = !monthFilter || data.length > 1;
 
   const months = data.map(r => r.Month);
   const income = data.map(r => parseNum(r['Total Income']) || 0);
   const expenses = data.map(r => Math.abs(parseNum(r['Total Expenses']) || 0));
   const savings = data.map(r => parseNum(r['Net Savings']) || 0);
 
+  // Always show income vs expenses
   createOrUpdateChart('chart-income-expenses', 'bar', {
     labels: months,
     datasets: [
@@ -422,14 +425,23 @@ function renderMonthlySummary() {
     ],
   }, { plugins: { title: { display: true, text: 'Income vs Expenses', color: '#e4e6f0' } } });
 
-  createOrUpdateChart('chart-savings-trend', 'line', {
-    labels: months,
-    datasets: [{
-      label: 'Net Savings', data: savings,
-      borderColor: '#7c6fae', backgroundColor: 'rgba(124, 111, 174, 0.1)',
-      fill: true, tension: 0.3,
-    }],
-  }, { plugins: { title: { display: true, text: 'Net Savings Trend', color: '#e4e6f0' } } });
+  // Only show savings trend when multiple months are visible
+  const savingsWrapper = document.getElementById('chart-savings-trend')?.closest('.chart-wrapper');
+  if (savingsWrapper) {
+    if (multiMonth) {
+      savingsWrapper.style.display = '';
+      createOrUpdateChart('chart-savings-trend', 'line', {
+        labels: months,
+        datasets: [{
+          label: 'Net Savings', data: savings,
+          borderColor: '#7c6fae', backgroundColor: 'rgba(124, 111, 174, 0.1)',
+          fill: true, tension: 0.3,
+        }],
+      }, { plugins: { title: { display: true, text: 'Net Savings Trend', color: '#e4e6f0' } } });
+    } else {
+      savingsWrapper.style.display = 'none';
+    }
+  }
 
   const container = document.getElementById('monthly-table-container');
   let html = '<div class="table-scroll"><table><thead><tr>';
