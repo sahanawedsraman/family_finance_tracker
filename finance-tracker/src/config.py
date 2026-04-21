@@ -143,16 +143,10 @@ def load_config(path: str) -> AppConfig:
             raise ConfigError("'persons' is required")
         persons = _validate_persons(data["persons"])
 
-        # categories (optional when gemini is enabled)
-        gemini_raw = data.get("gemini", {})
-        gemini_enabled = isinstance(gemini_raw, dict) and gemini_raw.get("enabled", False)
-
-        if "categories" in data:
-            categories = _validate_categories(data["categories"])
-        elif gemini_enabled:
-            categories = {}  # Gemini handles categorization
-        else:
-            raise ConfigError("'categories' is required when gemini is not enabled")
+        # categories
+        if "categories" not in data:
+            raise ConfigError("'categories' is required")
+        categories = _validate_categories(data["categories"])
 
         # budgets (optional)
         budgets = _validate_budgets(data.get("budgets"))
@@ -162,26 +156,6 @@ def load_config(path: str) -> AppConfig:
         if not isinstance(log_level, str):
             raise ConfigError("'log_level' must be a string")
 
-        # gemini config
-        import os as _os
-        gemini = GeminiConfig()
-        if isinstance(gemini_raw, dict) and gemini_raw.get("enabled"):
-            api_key = gemini_raw.get("api_key", "") or _os.environ.get("GEMINI_API_KEY", "")
-            if not api_key:
-                raise ConfigError(
-                    "Gemini is enabled but no API key provided. "
-                    "Set 'gemini.api_key' in config or GEMINI_API_KEY env var."
-                )
-            fallback = gemini_raw.get("fallback_models")
-            if fallback is not None and not isinstance(fallback, list):
-                raise ConfigError("'gemini.fallback_models' must be a list of model names")
-            gemini = GeminiConfig(
-                enabled=True,
-                api_key=api_key,
-                model=gemini_raw.get("model", "gemini-2.0-flash"),
-                fallback_models=fallback,  # None uses defaults from __post_init__
-            )
-
         config = AppConfig(
             drive_folder_id=drive_folder_id,
             sheet_id=sheet_id,
@@ -189,7 +163,6 @@ def load_config(path: str) -> AppConfig:
             persons=persons,
             categories=categories,
             budgets=budgets,
-            gemini=gemini,
             log_level=log_level,
         )
         logger.info(

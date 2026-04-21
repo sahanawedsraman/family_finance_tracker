@@ -127,7 +127,6 @@ def run_pipeline(config_path="config.yaml", dry_run=False):
                         file_name=df.name,
                         mime_type=df.mime_type,
                         person_patterns=person_patterns,
-                        gemini_config=config.gemini,
                         folder_path=df.folder_path,
                     )
                     all_transactions.extend(txns)
@@ -205,23 +204,8 @@ def run_pipeline(config_path="config.yaml", dry_run=False):
         print("         2025-01-15 | Federal Tax | -800 | Taxes | Raman")
         print("         2025-01-15 | 401k | -500 | Retirement | Raman\n")
 
-    # Step 8: Categorize only NEW transactions (not ones already in the Sheet)
-    if all_transactions and config.gemini and config.gemini.enabled:
-        from src.llm_parser import categorize_with_gemini
-
-        categorize_with_gemini(
-            all_transactions,
-            api_key=config.gemini.api_key,
-            model=config.gemini.model,
-            fallback_models=config.gemini.fallback_models,
-        )
-        if config.categories:
-            from src.categorizer import match_category
-
-            for txn in all_transactions:
-                if txn.category == "Other":
-                    txn.category = match_category(txn.description, config.categories)
-    elif all_transactions:
+    # Step 8: Categorize new transactions using keyword matching
+    if all_transactions and config.categories:
         categorize_transactions(all_transactions, config.categories)
 
     # Step 9: Write transactions (merges with existing, preserves manual edits)

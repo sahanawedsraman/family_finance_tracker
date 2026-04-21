@@ -23,7 +23,7 @@ categories:
   Housing: ["rent", "mortgage", "hoa", "property tax"]
   Travel: ["airline", "hotel", "airbnb", "booking.com", "flight", "rental car", "expedia", "southwest", "delta", "united", "american airlines", "jetblue", "marriott", "hilton", "hyatt", "ez pass", "e-zpass", "toll", "holiday inn", "best western", "radisson", "wyndham", "choice hotels", "motel 6", "la quinta", "courtyard", "hampton inn", "doubletree", "sheraton", "westin", "ritz carlton", "four seasons", "intercontinental", "crowne plaza", "fairfield inn", "residence inn", "springhill suites", "homewood suites", "embassy suites", "aloft", "w hotel", "ace hotel", "omni", "loews", "scrubadub", "spothero", "lukoil", "citgo", "valero", "phillips 66", "conoco", "mobil"]
   Taxes: ["federal tax", "state tax", "fica", "social security", "medicare", "tax withholding"]
-  Investment: ["fidelity", "vanguard", "schwab", "brokerage", "etrade", "robinhood"]
+  Investment: ["fidelity", "fid bkg svc", "vanguard", "schwab", "brokerage", "etrade", "robinhood"]
   Retirement: ["401k", "403b", "ira", "pension", "roth"]
   Insurance: ["insurance", "geico", "allstate", "progressive", "state farm", "liberty mutual", "spot pet"]
   Childcare: ["daycare", "preschool", "childcare", "babysit", "petsmart"]
@@ -40,12 +40,3 @@ budgets:
   Other: 500
 
 log_level: "INFO"
-
-# Gemini LLM-based parsing (recommended for PDF statements)
-# Get a free API key at https://aistudio.google.com/apikey
-# You can also set the GEMINI_API_KEY environment variable instead
-gemini:
-  enabled: true
-  api_key: ""  # leave empty to use GEMINI_API_KEY env var
-  model: "gemini-2.0-flash"  # primary model
-  fallback_models: []  # empty = no fallbacks, only use primary model

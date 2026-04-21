@@ -173,7 +173,7 @@ def parse_csv(path: str) -> list[Transaction]:
     """Parse a CSV bank/credit card statement using pandas."""
     try:
         header_row = _find_header_row(path)
-        df = pd.read_csv(path, header=header_row, on_bad_lines="skip")
+        df = pd.read_csv(path, skiprows=header_row, on_bad_lines="skip")
         col_map = _detect_columns(df)
         if not col_map.get("date") or not col_map.get("description"):
             # Try without skipping rows as fallback
@@ -302,12 +302,10 @@ def parse_file(
     file_name: str = "",
     mime_type: str = "",
     person_patterns: dict[str, list[str]] | None = None,
-    gemini_config=None,
     folder_path: str = "",
 ) -> list[Transaction]:
     """
     Route to the correct parser based on MIME type or file extension.
-    Uses Gemini for PDFs when configured, falls back to regex-based parsing.
     Assigns person and source_file to each transaction.
 
     Args:
@@ -315,7 +313,6 @@ def parse_file(
         file_name: Original filename (used for person detection).
         mime_type: MIME type from Google Drive (optional, falls back to extension).
         person_patterns: Mapping of person name -> list of patterns.
-        gemini_config: Optional GeminiConfig for LLM-based PDF parsing.
         folder_path: Google Drive folder path for person detection.
 
     Returns:
@@ -335,22 +332,7 @@ def parse_file(
     elif parser_type == "excel":
         transactions = parse_excel(file_path)
     elif parser_type == "pdf":
-        # Use Gemini if configured
-        if gemini_config and gemini_config.enabled:
-            from src.llm_parser import parse_pdf_with_gemini
-
-            logger.info("Routing PDF to Gemini parser: %s", file_name)
-            transactions = parse_pdf_with_gemini(
-                file_path,
-                api_key=gemini_config.api_key,
-                model=gemini_config.model,
-                fallback_models=gemini_config.fallback_models,
-            )
-            if not transactions:
-                logger.warning("Gemini returned no results for %s — check if the PDF is readable", file_name)
-        else:
-            logger.info("Gemini not configured, using regex PDF parser for: %s", file_name)
-            transactions = parse_pdf(file_path)
+        transactions = parse_pdf(file_path)
     else:
         logger.warning("Unsupported file type for %s (mime: %s)", file_name, mime_type)
         return []
