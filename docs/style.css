@@ -809,7 +809,16 @@ footer {
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.75rem;
+  cursor: pointer;
 }
+
+.trip-categories.trip-collapsed .trip-cat { display: none; }
+.trip-expand-hint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  width: 100%;
+}
+.trip-categories:not(.trip-collapsed) .trip-expand-hint { display: none; }
 
 .trip-cat {
   background: var(--surface2);

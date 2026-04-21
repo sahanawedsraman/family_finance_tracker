@@ -122,6 +122,11 @@ def _rows_to_transactions(df: pd.DataFrame, col_map: dict[str, str | None]) -> l
         if not description:
             continue
 
+        # Skip balance summary rows
+        desc_lower = description.lower()
+        if any(skip in desc_lower for skip in ["beginning balance", "ending balance", "opening balance", "closing balance"]):
+            continue
+
         # Determine amount and transaction type
         if amount_col and pd.notna(row.get(amount_col)):
             amount = normalize_amount(row[amount_col])

@@ -60,6 +60,11 @@ def parse_args(argv=None):
         action="store_true",
         help="Suggest new keywords based on recategorized transactions",
     )
+    parser.add_argument(
+        "--reprocess",
+        action="store_true",
+        help="Clear processed files state and reprocess everything",
+    )
     return parser.parse_args(argv)
 
 
@@ -340,6 +345,29 @@ def learn_categories(config_path: str) -> None:
     print("\nCopy these into your config.yaml categories section.")
 
 
+def _print_other_summary(config_path: str) -> None:
+    """Print a summary of uncategorized transactions."""
+    try:
+        config = load_config(config_path)
+        creds = get_credentials()
+        sheets = build_sheets_service(creds)
+        txns = read_existing_transactions(sheets, config.sheet_id)
+        others = [t for t in txns if t.get("Category") == "Other"]
+        if others:
+            print(f"\n⚠ {len(others)} transactions categorized as 'Other':")
+            seen = set()
+            for t in others[:15]:
+                desc = t.get("Description", "")[:50]
+                if desc not in seen:
+                    print(f"  • {t.get('Date', '')} — {desc} — {t.get('Amount', '')}")
+                    seen.add(desc)
+            if len(others) > 15:
+                print(f"  ... and {len(others) - 15} more")
+            print("  Fix these in the Transactions tab of your Google Sheet.\n")
+    except Exception:
+        pass
+
+
 def main(argv=None):
     """Main entry point for the finance tracker pipeline."""
     args = parse_args(argv)
@@ -353,6 +381,11 @@ def main(argv=None):
         learn_categories(config_path)
         return
 
+    if args.reprocess:
+        if os.path.exists(STATE_FILE):
+            os.remove(STATE_FILE)
+            print("Cleared processed files state. Reprocessing all files.")
+
     if args.dry_run:
         print("DRY RUN — no data will be written to Sheets\n")
 
@@ -362,6 +395,10 @@ def main(argv=None):
     summary_text = summary.format_summary()
     logger.info("\n%s", summary_text)
     print(summary_text)
+
+    # Print "Other" transactions summary
+    if not args.dry_run:
+        _print_other_summary(config_path)
 
     if summary.errors:
         sys.exit(1)

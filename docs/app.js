@@ -246,11 +246,26 @@ function filterByPeriod(data, monthKey) {
 }
 
 function applyFilters() {
+  updatePersonCounts();
   renderKPIs();
   renderMonthlySummary();
   renderCategoryBreakdown();
   renderTrips();
   renderTransactions();
+}
+
+function updatePersonCounts() {
+  const prefix = getFilteredMonth();
+  const txns = prefix
+    ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
+    : rawTransactionData;
+
+  document.querySelectorAll('.person-btn').forEach(btn => {
+    const person = btn.dataset.person;
+    const count = person ? txns.filter(r => r.Person === person).length : txns.length;
+    const label = person || 'All';
+    btn.textContent = `${label} (${count})`;
+  });
 }
 
 // ── KPIs ──
@@ -312,6 +327,46 @@ function renderKPIs() {
   document.getElementById('kpi-retirement').innerHTML = `<span class="money">$${breakdownCats.Retirement.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
   document.getElementById('kpi-healthcare').innerHTML = `<span class="money">$${breakdownCats.Healthcare.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
   document.getElementById('kpi-invested').innerHTML = `<span class="money">$${breakdownCats.Investment.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
+
+  // MoM change arrows
+  addMomArrow('kpi-spending', discretionarySpending, txns, 'spending');
+  addMomArrow('kpi-income', totalIncome, txns, 'income');
+}
+
+function addMomArrow(elementId, currentValue, txns, type) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+
+  // Find previous month's value
+  const months = new Set();
+  txns.forEach(r => { const m = (r.Date || '').substring(0, 7); if (m) months.add(m); });
+  const sortedMonths = [...months].sort();
+  if (sortedMonths.length < 2) return;
+
+  const prevMonth = sortedMonths[sortedMonths.length - 2];
+  const prevTxns = rawTransactionData.filter(r => (r.Date || '').startsWith(prevMonth));
+  let prevFiltered = overviewPerson ? prevTxns.filter(r => r.Person === overviewPerson) : prevTxns;
+
+  let prevValue = 0;
+  if (type === 'spending') {
+    const nonSpending = new Set(['Taxes', 'Retirement', 'Investment', 'Income', 'Transfer']);
+    prevValue = prevFiltered.reduce((s, r) => {
+      const a = parseNum(r.Amount); const c = r.Category || 'Other';
+      return (a < 0 && !nonSpending.has(c)) ? s + Math.abs(a) : s;
+    }, 0);
+  } else {
+    prevValue = prevFiltered.reduce((s, r) => { const a = parseNum(r.Amount); return a > 0 ? s + a : s; }, 0);
+  }
+
+  if (prevValue <= 0) return;
+  const pctChange = ((currentValue - prevValue) / prevValue * 100);
+  const isUp = pctChange > 0;
+  const arrow = isUp ? '↑' : '↓';
+  const color = (type === 'spending') ? (isUp ? 'var(--red)' : 'var(--green)') : (isUp ? 'var(--green)' : 'var(--red)');
+
+  if (Math.abs(pctChange) > 1) {
+    el.innerHTML += `<div style="font-size:0.65rem;color:${color};margin-top:0.15rem">${arrow} ${Math.abs(pctChange).toFixed(0)}% vs last month</div>`;
+  }
 }
 
 function renderInsights() {
@@ -664,7 +719,8 @@ function renderTrips() {
           ${reimbursements > 0 ? `<div style="font-size:0.75rem;color:var(--text-muted)">Spent ${fmtNum(grossSpent)} · Got back ${fmtNum(reimbursements)}</div>` : ''}
         </div>
       </div>
-      <div class="trip-categories">
+      <div class="trip-categories trip-collapsed" onclick="this.classList.toggle('trip-collapsed')">
+        <div class="trip-expand-hint">tap to see breakdown</div>
         ${sortedCats.map(([cat, amt]) => `<span class="trip-cat">${cat}: ${fmtNum(amt)}</span>`).join('')}
       </div>
     </div>`;
