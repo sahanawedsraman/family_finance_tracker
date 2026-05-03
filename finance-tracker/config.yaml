@@ -22,11 +22,12 @@ categories:
   Subscriptions: ["subscription", "membership", "annual fee", "monthly fee", "prime", "icloud", "google one", "dropbox", "crunchyroll", "google *fi", "us mobile", "disney plus", "jio", "anatolyfit", "minutecryptic"]
   Housing: ["rent", "mortgage", "hoa", "property tax"]
   Travel: ["airline", "hotel", "airbnb", "booking.com", "flight", "rental car", "expedia", "southwest", "delta", "united", "american airlines", "jetblue", "marriott", "hilton", "hyatt", "ez pass", "e-zpass", "toll", "holiday inn", "best western", "radisson", "wyndham", "choice hotels", "motel 6", "la quinta", "courtyard", "hampton inn", "doubletree", "sheraton", "westin", "ritz carlton", "four seasons", "intercontinental", "crowne plaza", "fairfield inn", "residence inn", "springhill suites", "homewood suites", "embassy suites", "aloft", "w hotel", "ace hotel", "omni", "loews", "scrubadub", "spothero", "lukoil", "citgo", "valero", "phillips 66", "conoco", "mobil"]
-  Taxes: ["federal tax", "state tax", "fica", "social security", "medicare", "tax withholding"]
+  Taxes: ["federal tax", "state tax", "fica", "social security", "medicare", "tax withholding", "taxes"]
   Investment: ["fidelity", "fid bkg svc", "vanguard", "schwab", "brokerage", "etrade", "robinhood"]
-  Retirement: ["401k", "403b", "ira", "pension", "roth"]
+  Retirement: ["401k", "403b", "ira", "pension", "roth", "retirement"]
   Insurance: ["insurance", "geico", "allstate", "progressive", "state farm", "liberty mutual", "spot pet"]
   Transfer: ["chase credit crd", "discover payment", "credit card payment", "payment thank you", "autopay", "epay", "online payment", "zelle", "venmo", "wire transfer", "ach transfer", "transfer to", "transfer from"]
+  Income: ["gross pay", "payroll", "salary", "direct deposit", "wage"]
   Childcare: ["daycare", "preschool", "childcare", "babysit", "petsmart"]
 
 budgets:

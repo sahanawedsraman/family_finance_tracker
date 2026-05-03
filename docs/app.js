@@ -139,17 +139,31 @@ async function loadAllData() {
     populateYearFilter();
     setupFilterListeners();
 
-    // Default to current month
+    // Default to current month, fall back to previous month if no data
     const now = new Date();
     const currentYear = String(now.getFullYear());
     const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const currentPrefix = `${currentYear}-${currentMonth}`;
+    const hasCurrentData = rawTransactionData.some(r => (r.Date || '').startsWith(currentPrefix));
+
+    let defaultYear = currentYear;
+    let defaultMonth = currentMonth;
+    if (!hasCurrentData) {
+      // Fall back to previous month
+      let prevMon = now.getMonth(); // 0-indexed, so this is already prev month
+      let prevYear = now.getFullYear();
+      if (prevMon < 1) { prevMon = 12; prevYear--; }
+      defaultYear = String(prevYear);
+      defaultMonth = String(prevMon).padStart(2, '0');
+    }
+
     const yearSelect = document.getElementById('filter-year');
     const monthSelect = document.getElementById('filter-month');
-    if ([...yearSelect.options].some(o => o.value === currentYear)) {
-      yearSelect.value = currentYear;
+    if ([...yearSelect.options].some(o => o.value === defaultYear)) {
+      yearSelect.value = defaultYear;
       updateMonthOptions();
-      if ([...monthSelect.options].some(o => o.value === currentMonth)) {
-        monthSelect.value = currentMonth;
+      if ([...monthSelect.options].some(o => o.value === defaultMonth)) {
+        monthSelect.value = defaultMonth;
       }
     }
 

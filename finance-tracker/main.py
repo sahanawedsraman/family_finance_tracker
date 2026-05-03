@@ -210,8 +210,10 @@ def run_pipeline(config_path="config.yaml", dry_run=False):
         print("         2025-01-15 | 401k | -500 | Retirement | Raman\n")
 
     # Step 8: Categorize new transactions using keyword matching
+    # Skip manual entries — they already have correct categories from the Manual Entry tab
     if all_transactions and config.categories:
-        categorize_transactions(all_transactions, config.categories)
+        file_transactions = [t for t in all_transactions if t.source_file != "Manual Entry"]
+        categorize_transactions(file_transactions, config.categories)
 
     # Step 9: Write transactions (merges with existing, preserves manual edits)
     if dry_run:
