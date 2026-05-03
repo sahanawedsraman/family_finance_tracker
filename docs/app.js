@@ -319,7 +319,11 @@ function renderKPIs() {
     return;
   }
 
-  const totalIncome = txns.reduce((s, r) => { const a = parseNum(r.Amount); return a > 0 ? s + a : s; }, 0);
+  const totalIncome = txns.reduce((s, r) => {
+    const a = parseNum(r.Amount);
+    const cat = r.Category || 'Other';
+    return (a > 0 && cat !== 'Transfer') ? s + a : s;
+  }, 0);
 
   // Spending = all negative amounts (this is the total outflow)
   const totalOutflow = txns.reduce((s, r) => { const a = parseNum(r.Amount); return a < 0 ? s + Math.abs(a) : s; }, 0);
