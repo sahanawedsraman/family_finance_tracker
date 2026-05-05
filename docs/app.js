@@ -346,9 +346,10 @@ function renderKPIs() {
   document.getElementById('kpi-income').innerHTML = `<span class="money">$${totalIncome.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
   document.getElementById('kpi-spending').innerHTML = `<span class="money">$${discretionarySpending.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
 
-  const savedColor = netSavings >= 0 ? 'var(--green)' : 'var(--red)';
-  document.getElementById('kpi-saved').innerHTML = `<span class="money" style="color:${savedColor}">$${netSavings.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
-  document.getElementById('kpi-savings-rate').textContent = savingsRate.toFixed(1) + '%';
+  const displaySaved = Math.max(0, netSavings);
+  document.getElementById('kpi-saved').innerHTML = `<span class="money" style="color:var(--green)">$${displaySaved.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>`;
+  const displayRate = Math.max(0, savingsRate);
+  document.getElementById('kpi-savings-rate').textContent = displayRate.toFixed(1) + '%';
 
   // Income breakdown
   const breakdownCats = { Taxes: 0, Retirement: 0, Healthcare: 0, Investment: 0 };
