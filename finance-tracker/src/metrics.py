@@ -59,8 +59,8 @@ def _build_metrics(
     budgets: dict[str, float],
 ) -> MonthlyMetrics:
     """Build a MonthlyMetrics object from a list of transactions for one month/person."""
-    total_income = sum(t.amount for t in txns if t.amount > 0)
-    total_expenses = sum(t.amount for t in txns if t.amount < 0)
+    total_income = sum(t.amount for t in txns if t.amount > 0 and t.category != "Transfer")
+    total_expenses = sum(t.amount for t in txns if t.amount < 0 and t.category != "Transfer")
 
     net_savings = total_income + total_expenses  # expenses are negative
     savings_rate = (net_savings / total_income * 100) if total_income > 0 else 0.0

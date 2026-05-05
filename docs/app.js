@@ -325,8 +325,12 @@ function renderKPIs() {
     return (a > 0 && cat !== 'Transfer') ? s + a : s;
   }, 0);
 
-  // Spending = all negative amounts (this is the total outflow)
-  const totalOutflow = txns.reduce((s, r) => { const a = parseNum(r.Amount); return a < 0 ? s + Math.abs(a) : s; }, 0);
+  // Total outflow = all negative amounts excluding transfers (to avoid double-counting)
+  const totalOutflow = txns.reduce((s, r) => {
+    const a = parseNum(r.Amount);
+    const cat = r.Category || 'Other';
+    return (a < 0 && cat !== 'Transfer') ? s + Math.abs(a) : s;
+  }, 0);
 
   // Discretionary spending = outflow minus taxes, retirement, investment (shown separately in breakdown cards)
   const nonSpendingCats = new Set(['Taxes', 'Retirement', 'Investment']);
