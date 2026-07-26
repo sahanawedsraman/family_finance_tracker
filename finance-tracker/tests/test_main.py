@@ -472,7 +472,7 @@ class TestMainEntryPoint:
         )
         # Should not raise
         main(["--config", config_file])
-        mock_run.assert_called_once_with(config_file, dry_run=False)
+        mock_run.assert_called_once_with(config_file, dry_run=False, show_report=True)
 
     @patch("main.run_pipeline")
     def test_main_exits_on_errors(self, mock_run, config_file):

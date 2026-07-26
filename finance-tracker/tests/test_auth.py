@@ -12,8 +12,8 @@ from src.auth import SCOPES, build_drive_service, build_sheets_service, get_cred
 class TestScopes:
     """Verify the declared OAuth scopes."""
 
-    def test_drive_readonly_scope(self):
-        assert "https://www.googleapis.com/auth/drive.readonly" in SCOPES
+    def test_drive_scope(self):
+        assert "https://www.googleapis.com/auth/drive" in SCOPES
 
     def test_sheets_readwrite_scope(self):
         assert "https://www.googleapis.com/auth/spreadsheets" in SCOPES
@@ -103,10 +103,11 @@ class TestGetCredentials:
         mock_flow.run_local_server.assert_called_once()
         assert result is new_creds
 
+    @patch("src.auth.os.chmod")
     @patch("builtins.open", new_callable=mock_open)
     @patch("src.auth.InstalledAppFlow")
     @patch("src.auth.os.path.exists", return_value=False)
-    def test_saves_token_after_oauth_flow(self, mock_exists, mock_flow_cls, mock_file):
+    def test_saves_token_after_oauth_flow(self, mock_exists, mock_flow_cls, mock_file, mock_chmod):
         """Verify the token is written to disk after a fresh OAuth flow."""
         mock_creds = MagicMock()
         mock_creds.to_json.return_value = '{"token": "saved"}'
@@ -118,6 +119,7 @@ class TestGetCredentials:
 
         mock_file.assert_called_once_with("my_token.json", "w")
         mock_file().write.assert_called_once_with('{"token": "saved"}')
+        mock_chmod.assert_called_once_with("my_token.json", 0o600)
 
     @patch("src.auth.os.path.exists", return_value=True)
     def test_uses_custom_paths(self, mock_exists):

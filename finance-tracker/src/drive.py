@@ -87,6 +87,31 @@ def download_files(service, files: list[DriveFile], download_dir: str) -> list[D
 SHORTCUT_MIME_TYPE = "application/vnd.google-apps.shortcut"
 
 
+def _find_or_create_subfolder(service, parent_id: str, name: str) -> str:
+    """Find a subfolder by name or create it. Returns the folder ID."""
+    query = f"'{parent_id}' in parents and name = '{name}' and mimeType = '{FOLDER_MIME_TYPE}' and trashed = false"
+    result = retry_api_call(lambda: service.files().list(q=query, fields="files(id)").execute())
+    files = result.get("files", [])
+    if files:
+        return files[0]["id"]
+    body = {"name": name, "mimeType": FOLDER_MIME_TYPE, "parents": [parent_id]}
+    created = retry_api_call(lambda: service.files().create(body=body, fields="id").execute())
+    logger.info("Created subfolder '%s' under %s", name, parent_id)
+    return created["id"]
+
+
+def upload_file(service, parent_folder_id: str, person_name: str, filename: str, file_bytes: bytes, mime_type: str) -> str:
+    """Upload a file to the person's subfolder in Drive. Creates subfolder if needed. Returns file ID."""
+    from googleapiclient.http import MediaIoBaseUpload
+
+    folder_id = _find_or_create_subfolder(service, parent_folder_id, person_name)
+    media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mime_type, resumable=True)
+    body = {"name": filename, "parents": [folder_id]}
+    result = retry_api_call(lambda: service.files().create(body=body, media_body=media, fields="id").execute())
+    logger.info("Uploaded '%s' to Drive folder '%s' (id=%s)", filename, person_name, result["id"])
+    return result["id"]
+
+
 def list_files(service, folder_id: str) -> list[DriveFile]:
     """Recursively list all supported files in a Drive folder and its subfolders."""
     results: list[DriveFile] = []

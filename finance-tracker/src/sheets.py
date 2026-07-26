@@ -268,6 +268,28 @@ def initialize_manual_entry_tab(service, sid: str) -> None:
         ).execute())
 
 
+def append_manual_entries(service, sid: str, entries: list[list[str]]) -> None:
+    """Append rows to the Manual Entry tab."""
+    retry_api_call(lambda: service.spreadsheets().values().append(
+        spreadsheetId=sid,
+        range=f"{TAB_MANUAL_ENTRY}!A:E",
+        valueInputOption="USER_ENTERED",
+        insertDataOption="INSERT_ROWS",
+        body={"values": entries},
+    ).execute())
+
+
+def update_transaction_category(service, sid: str, row_number: int, new_category: str) -> None:
+    """Update the category of a single transaction by its 1-indexed row number."""
+    range_str = f"{TAB_TRANSACTIONS}!D{row_number}"
+    retry_api_call(lambda: service.spreadsheets().values().update(
+        spreadsheetId=sid,
+        range=range_str,
+        valueInputOption="USER_ENTERED",
+        body={"values": [[new_category]]},
+    ).execute())
+
+
 def read_manual_entries(service, sid: str) -> list[Transaction]:
     from datetime import datetime as _dt
     result = retry_api_call(lambda: service.spreadsheets().values().get(

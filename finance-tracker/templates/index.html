@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finance Tracker — Monthly Update</title>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --text: #1a202c;
+      --text-muted: #718096;
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --green: #059669;
+      --red: #dc2626;
+      --yellow: #d97706;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+    .container { max-width: 800px; margin: 0 auto; padding: 1.5rem; }
+    h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; }
+    h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text); }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 1.5rem; }
+    .tab { padding: 0.75rem 1.25rem; border: none; background: none; cursor: pointer; font-size: 0.9rem; font-weight: 500; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Cards */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem; }
+
+    /* Forms */
+    label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.25rem; color: var(--text-muted); }
+    input, select { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.9rem; margin-bottom: 0.75rem; }
+    input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.25rem; border: none; border-radius: var(--radius); font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-success { background: var(--green); color: white; }
+    .btn-danger { background: var(--red); color: white; }
+
+    /* Upload zone */
+    .drop-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2rem; text-align: center; color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: rgba(79,70,229,0.03); }
+    .drop-zone input[type="file"] { display: none; }
+
+    /* Messages */
+    .msg { padding: 0.75rem 1rem; border-radius: var(--radius); margin-bottom: 1rem; font-size: 0.85rem; }
+    .msg-success { background: #d1fae5; color: #065f46; }
+    .msg-error { background: #fee2e2; color: #991b1b; }
+    .msg-info { background: #dbeafe; color: #1e40af; }
+
+    /* Transaction list */
+    .txn-item { display: grid; grid-template-columns: 90px 1fr 90px 160px; gap: 0.75rem; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    .txn-item:last-child { border-bottom: none; }
+    .txn-desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .txn-amount { text-align: right; font-weight: 500; }
+    .txn-select { padding: 0.3rem; margin: 0; font-size: 0.8rem; }
+
+    /* Pipeline output */
+    .pipeline-output { font-family: 'SF Mono', 'Monaco', 'Menlo', monospace; font-size: 0.8rem; background: #1a202c; color: #e2e8f0; padding: 1rem; border-radius: var(--radius); white-space: pre-wrap; max-height: 400px; overflow-y: auto; }
+
+    /* Loading */
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .summary { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; }
+    .count-badge { background: var(--primary); color: white; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 10px; margin-left: 0.5rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Finance Tracker — Monthly Update</h1>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="upload">Upload Statements</button>
+      <button class="tab" data-tab="paystub">Pay Stub</button>
+      <button class="tab" data-tab="categories">Fix Categories<span id="cat-badge" class="count-badge" style="display:none"></span></button>
+      <button class="tab" data-tab="pipeline">Run Pipeline</button>
+    </div>
+
+    <!-- Upload Tab -->
+    <div id="tab-upload" class="tab-panel active">
+      <div class="card">
+        <h2>Upload Bank Statements</h2>
+        <div class="form-row" style="margin-bottom:1rem">
+          <div>
+            <label for="upload-person">Person</label>
+            <select id="upload-person"></select>
+          </div>
+          <div></div>
+        </div>
+        <div class="drop-zone" id="drop-zone">
+          <p><strong>Drag & drop files here</strong></p>
+          <p style="font-size:0.8rem;margin-top:0.5rem">or click to browse (CSV, PDF, Excel)</p>
+          <input type="file" id="file-input" accept=".csv,.pdf,.xlsx,.xls" multiple>
+        </div>
+        <div id="upload-msg" style="margin-top:1rem"></div>
+      </div>
+    </div>
+
+    <!-- Pay Stub Tab -->
+    <div id="tab-paystub" class="tab-panel">
+      <div class="card">
+        <h2>Enter Pay Stub</h2>
+        <div class="form-row">
+          <div>
+            <label for="ps-person">Person</label>
+            <select id="ps-person"></select>
+          </div>
+          <div>
+            <label for="ps-date">Pay Date</label>
+            <input type="date" id="ps-date">
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label for="ps-gross">Gross Pay</label>
+            <input type="number" id="ps-gross" step="0.01" min="0" placeholder="5000.00">
+          </div>
+          <div>
+            <label for="ps-federal">Federal Tax</label>
+            <input type="number" id="ps-federal" step="0.01" min="0" placeholder="800.00">
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label for="ps-state">State Tax</label>
+            <input type="number" id="ps-state" step="0.01" min="0" placeholder="300.00">
+          </div>
+          <div>
+            <label for="ps-fica">FICA (SS + Medicare)</label>
+            <input type="number" id="ps-fica" step="0.01" min="0" placeholder="380.00">
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label for="ps-401k">401k Contribution</label>
+            <input type="number" id="ps-401k" step="0.01" min="0" placeholder="500.00">
+          </div>
+          <div>
+            <label for="ps-health">Health Insurance</label>
+            <input type="number" id="ps-health" step="0.01" min="0" placeholder="200.00">
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label for="ps-other">Other Deductions</label>
+            <input type="number" id="ps-other" step="0.01" min="0" placeholder="0.00" value="0">
+          </div>
+          <div style="display:flex;align-items:flex-end;padding-bottom:0.75rem">
+            <button class="btn btn-primary" id="btn-paystub">Submit Pay Stub</button>
+          </div>
+        </div>
+        <div id="ps-msg"></div>
+      </div>
+    </div>
+
+    <!-- Categories Tab -->
+    <div id="tab-categories" class="tab-panel">
+      <div class="card">
+        <h2>Fix Uncategorized Transactions</h2>
+        <p class="summary" style="margin-bottom:1rem">Transactions marked as "Other" that need a proper category.</p>
+        <div id="cat-list"></div>
+        <div id="cat-msg"></div>
+      </div>
+    </div>
+
+    <!-- Pipeline Tab -->
+    <div id="tab-pipeline" class="tab-panel">
+      <div class="card">
+        <h2>Run Pipeline</h2>
+        <p class="summary" style="margin-bottom:1rem">Process new statements, categorize transactions, and update metrics.</p>
+        <button class="btn btn-primary" id="btn-pipeline">Run Full Pipeline</button>
+        <div id="pipeline-msg" style="margin-top:1rem"></div>
+        <div id="pipeline-output" class="pipeline-output" style="display:none;margin-top:1rem"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    let appConfig = { persons: [], categories: [] };
+    let csrfToken = '';
+
+    // Load config and CSRF token on start
+    async function loadConfig() {
+      const [configRes, csrfRes] = await Promise.all([
+        fetch('/api/config'),
+        fetch('/api/csrf-token'),
+      ]);
+      appConfig = await configRes.json();
+      const csrfData = await csrfRes.json();
+      csrfToken = csrfData.token;
+      populatePersonDropdowns();
+      loadUncategorized();
+    }
+
+    function populatePersonDropdowns() {
+      ['upload-person', 'ps-person'].forEach(id => {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '';
+        appConfig.persons.forEach(p => {
+          sel.innerHTML += `<option value="${esc(p)}">${esc(p)}</option>`;
+        });
+      });
+    }
+
+    function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    function showMsg(containerId, msg, type) {
+      document.getElementById(containerId).innerHTML = `<div class="msg msg-${type}">${esc(msg)}</div>`;
+    }
+
+    // -- Upload --
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      handleFiles(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+    async function handleFiles(files) {
+      const person = document.getElementById('upload-person').value;
+      if (!person) { showMsg('upload-msg', 'Select a person first', 'error'); return; }
+
+      let uploaded = 0, errors = [];
+      for (const file of files) {
+        const form = new FormData();
+        form.append('file', file);
+        form.append('person', person);
+        form.append('_csrf', csrfToken);
+        try {
+          const res = await fetch('/api/upload', { method: 'POST', body: form });
+          const data = await res.json();
+          if (data.success) uploaded++;
+          else errors.push(`${file.name}: ${data.error}`);
+        } catch (e) {
+          errors.push(`${file.name}: Network error`);
+        }
+      }
+
+      if (errors.length) {
+        showMsg('upload-msg', `Uploaded ${uploaded} file(s). Errors: ${errors.join('; ')}`, uploaded ? 'info' : 'error');
+      } else {
+        showMsg('upload-msg', `Uploaded ${uploaded} file(s) to ${person}'s folder`, 'success');
+      }
+      fileInput.value = '';
+    }
+
+    // -- Pay Stub --
+    document.getElementById('ps-date').value = new Date().toISOString().split('T')[0];
+
+    document.getElementById('btn-paystub').addEventListener('click', async () => {
+      const btn = document.getElementById('btn-paystub');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Saving...';
+
+      const body = {
+        person: document.getElementById('ps-person').value,
+        date: document.getElementById('ps-date').value,
+        gross: parseFloat(document.getElementById('ps-gross').value) || 0,
+        federal: parseFloat(document.getElementById('ps-federal').value) || 0,
+        state: parseFloat(document.getElementById('ps-state').value) || 0,
+        fica: parseFloat(document.getElementById('ps-fica').value) || 0,
+        retirement: parseFloat(document.getElementById('ps-401k').value) || 0,
+        health: parseFloat(document.getElementById('ps-health').value) || 0,
+        other: parseFloat(document.getElementById('ps-other').value) || 0,
+      };
+
+      if (!body.date) { showMsg('ps-msg', 'Date is required', 'error'); btn.disabled = false; btn.textContent = 'Submit Pay Stub'; return; }
+      if (body.gross <= 0) { showMsg('ps-msg', 'Gross pay must be greater than 0', 'error'); btn.disabled = false; btn.textContent = 'Submit Pay Stub'; return; }
+
+      try {
+        const res = await fetch('/api/paystub', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+        const data = await res.json();
+        if (data.success) {
+          const net = data.net_takehome;
+          showMsg('ps-msg', `Pay stub saved (${data.entries} entries). Net take-home: $${net.toLocaleString(undefined, {minimumFractionDigits: 2})}`, 'success');
+          // Clear form
+          ['ps-gross', 'ps-federal', 'ps-state', 'ps-fica', 'ps-401k', 'ps-health'].forEach(id => document.getElementById(id).value = '');
+          document.getElementById('ps-other').value = '0';
+        } else {
+          showMsg('ps-msg', data.error, 'error');
+        }
+      } catch (e) {
+        showMsg('ps-msg', 'Network error', 'error');
+      }
+      btn.disabled = false;
+      btn.textContent = 'Submit Pay Stub';
+    });
+
+    // -- Categories --
+    async function loadUncategorized() {
+      const res = await fetch('/api/uncategorized');
+      const data = await res.json();
+      const list = document.getElementById('cat-list');
+      const badge = document.getElementById('cat-badge');
+
+      if (!data.transactions.length) {
+        list.innerHTML = '<p class="summary">All transactions are categorized.</p>';
+        badge.style.display = 'none';
+        return;
+      }
+
+      badge.textContent = data.total;
+      badge.style.display = 'inline';
+
+      const options = appConfig.categories.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+      list.innerHTML = data.transactions.slice(0, 50).map(t => `
+        <div class="txn-item" id="txn-row-${t.row}">
+          <span>${esc(t.date)}</span>
+          <span class="txn-desc" title="${esc(t.description)}">${esc(t.description)}</span>
+          <span class="txn-amount">${esc(t.amount)}</span>
+          <select class="txn-select" onchange="categorize(${t.row}, this.value)">
+            <option value="">Pick category...</option>
+            ${options}
+          </select>
+        </div>
+      `).join('');
+
+      if (data.total > 50) {
+        list.innerHTML += `<p class="summary">Showing 50 of ${data.total}. Fix these and refresh to see more.</p>`;
+      }
+    }
+
+    async function categorize(row, category) {
+      if (!category) return;
+      try {
+        const res = await fetch('/api/categorize', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({row, category}) });
+        const data = await res.json();
+        if (data.success) {
+          const el = document.getElementById('txn-row-' + row);
+          if (el) { el.style.opacity = '0.4'; el.querySelector('select').disabled = true; }
+          // Update badge count
+          const badge = document.getElementById('cat-badge');
+          const current = parseInt(badge.textContent) || 0;
+          if (current > 1) { badge.textContent = current - 1; }
+          else { badge.style.display = 'none'; }
+        }
+      } catch (e) { /* silent */ }
+    }
+
+    // -- Pipeline --
+    document.getElementById('btn-pipeline').addEventListener('click', async () => {
+      const btn = document.getElementById('btn-pipeline');
+      const output = document.getElementById('pipeline-output');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Running pipeline...';
+      output.style.display = 'none';
+      document.getElementById('pipeline-msg').innerHTML = '';
+
+      try {
+        const res = await fetch('/api/run-pipeline', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          let text = `Pipeline completed successfully.\n\n`;
+          text += `Files processed: ${data.files_processed}\n`;
+          text += `Files skipped (already processed): ${data.files_skipped}\n`;
+          text += `New transactions found: ${data.transactions_found}\n`;
+          if (data.errors.length) {
+            text += `\nWarnings:\n${data.errors.map(e => '  - ' + e).join('\n')}`;
+          }
+          output.textContent = text;
+          output.style.display = 'block';
+          showMsg('pipeline-msg', 'Pipeline ran successfully', 'success');
+          // Refresh categories
+          loadUncategorized();
+        } else {
+          showMsg('pipeline-msg', `Pipeline failed: ${data.error}`, 'error');
+        }
+      } catch (e) {
+        showMsg('pipeline-msg', 'Network error', 'error');
+      }
+      btn.disabled = false;
+      btn.textContent = 'Run Full Pipeline';
+    });
+
+    // Init
+    loadConfig();
+  </script>
+</body>
+</html>

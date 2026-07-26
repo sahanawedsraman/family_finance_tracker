@@ -2,6 +2,7 @@
 
 import logging
 import os
+import stat
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -11,7 +12,7 @@ from googleapiclient.discovery import build
 logger = logging.getLogger(__name__)
 
 SCOPES = [
-    "https://www.googleapis.com/auth/drive.readonly",
+    "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/spreadsheets",
 ]
 
@@ -45,9 +46,10 @@ def get_credentials(
         flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
         creds = flow.run_local_server(port=0)
 
-    # Persist the token for the next run.
+    # Persist the token for the next run (owner-only permissions).
     with open(token_path, "w") as token_file:
         token_file.write(creds.to_json())
+    os.chmod(token_path, stat.S_IRUSR | stat.S_IWUSR)
     logger.info("Saved credentials to %s", token_path)
 
     return creds
