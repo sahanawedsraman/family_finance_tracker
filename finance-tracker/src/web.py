@@ -245,32 +245,51 @@ def create_app(config_path: str) -> Flask:
 
     @app.route("/api/dashboard")
     def api_dashboard():
-        """Return financial summary data for the dashboard view."""
+        """Return financial summary data for the dashboard view.
+
+        Query params:
+            month: "YYYY-MM" to view a specific month (defaults to current)
+        """
         txns = read_existing_transactions(sheets_service, config.sheet_id)
         if not txns:
             return jsonify({"empty": True})
 
         today = date.today()
-        current_month = today.strftime("%Y-%m")
+        requested_month = request.args.get("month", today.strftime("%Y-%m"))
 
-        # Parse all transactions
-        monthly_data = defaultdict(lambda: {"income": 0.0, "expenses": 0.0, "categories": defaultdict(float)})
+        # Parse all transactions into structured data
+        monthly_data = defaultdict(lambda: {
+            "income": 0.0, "expenses": 0.0,
+            "categories": defaultdict(float),
+            "per_person": defaultdict(lambda: {"income": 0.0, "expenses": 0.0}),
+        })
+        all_parsed = []
+
         for t in txns:
             date_str = t.get("Date", "")
             if not date_str:
                 continue
             month_key = date_str[:7]
             category = t.get("Category", "Other")
-            if category == "Transfer":
-                continue
+            person = t.get("Person", "Unknown")
             try:
                 amount = float(str(t.get("Amount", 0)).replace(",", "").replace("$", ""))
             except (ValueError, TypeError):
                 continue
+
+            all_parsed.append({
+                "date": date_str, "description": t.get("Description", ""),
+                "amount": amount, "category": category, "person": person,
+            })
+
+            if category == "Transfer":
+                continue
             if amount > 0:
                 monthly_data[month_key]["income"] += amount
+                monthly_data[month_key]["per_person"][person]["income"] += amount
             else:
                 monthly_data[month_key]["expenses"] += abs(amount)
+                monthly_data[month_key]["per_person"][person]["expenses"] += abs(amount)
                 if category not in BUDGET_EXCLUDED_CATEGORIES:
                     monthly_data[month_key]["categories"][category] += abs(amount)
 
@@ -278,21 +297,35 @@ def create_app(config_path: str) -> Flask:
         if not sorted_months:
             return jsonify({"empty": True})
 
-        # Current month data
-        curr = monthly_data.get(current_month, {"income": 0, "expenses": 0, "categories": {}})
+        # Selected month data
+        curr = monthly_data.get(requested_month, {
+            "income": 0, "expenses": 0, "categories": defaultdict(float),
+            "per_person": defaultdict(lambda: {"income": 0.0, "expenses": 0.0}),
+        })
         curr_income = curr["income"]
         curr_expenses = curr["expenses"]
         curr_savings = curr_income - curr_expenses
         curr_savings_rate = (curr_savings / curr_income * 100) if curr_income > 0 else 0
 
         # Previous month for comparison
-        prev_month_date = (today.replace(day=1) - timedelta(days=1))
-        prev_month_key = prev_month_date.strftime("%Y-%m")
-        prev = monthly_data.get(prev_month_key, {"income": 0, "expenses": 0, "categories": {}})
-        prev_expenses = prev["expenses"]
+        month_idx = sorted_months.index(requested_month) if requested_month in sorted_months else -1
+        prev_expenses = 0
+        if month_idx > 0:
+            prev_key = sorted_months[month_idx - 1]
+            prev_expenses = monthly_data[prev_key]["expenses"]
         spending_mom = ((curr_expenses - prev_expenses) / prev_expenses * 100) if prev_expenses > 0 else 0
 
-        # Budget status for current month
+        # Per-person spending for selected month
+        person_spending = []
+        for p in [pp.name for pp in config.persons]:
+            pp_data = curr["per_person"].get(p, {"income": 0, "expenses": 0})
+            person_spending.append({
+                "person": p,
+                "income": round(pp_data["income"], 2),
+                "expenses": round(pp_data["expenses"], 2),
+            })
+
+        # Budget status for selected month
         budget_status = []
         for cat, budget_amt in config.budgets.items():
             if cat in BUDGET_EXCLUDED_CATEGORIES or budget_amt <= 0:
@@ -306,6 +339,27 @@ def create_app(config_path: str) -> Flask:
             })
         budget_status.sort(key=lambda x: x["pct"], reverse=True)
 
+        # Budget warnings (categories > 80% with days remaining)
+        days_in_month = 30
+        try:
+            year, mon = int(requested_month[:4]), int(requested_month[5:7])
+            from calendar import monthrange
+            days_in_month = monthrange(year, mon)[1]
+        except (ValueError, IndexError):
+            pass
+        days_elapsed = today.day if requested_month == today.strftime("%Y-%m") else days_in_month
+        days_remaining = max(0, days_in_month - days_elapsed)
+
+        budget_warnings = []
+        for b in budget_status:
+            if b["pct"] >= 80 and b["actual"] > 0:
+                budget_warnings.append({
+                    "category": b["category"],
+                    "pct": b["pct"],
+                    "over": b["pct"] > 100,
+                    "days_remaining": days_remaining,
+                })
+
         # Monthly trend (last 6 months)
         recent_months = sorted_months[-6:]
         trend = []
@@ -318,21 +372,67 @@ def create_app(config_path: str) -> Flask:
                 "savings": round(d["income"] - d["expenses"], 2),
             })
 
-        # Top spending categories (current month)
+        # Top spending categories for selected month
         cat_spending = sorted(curr["categories"].items(), key=lambda x: x[1], reverse=True)[:8]
+
+        # Recent transactions (last 30 from selected month, sorted by date desc)
+        month_txns = [t for t in all_parsed if t["date"].startswith(requested_month)]
+        month_txns.sort(key=lambda t: t["date"], reverse=True)
+        recent_txns = month_txns[:30]
 
         return jsonify({
             "empty": False,
-            "current_month": current_month,
+            "current_month": requested_month,
+            "available_months": sorted_months,
             "income": round(curr_income, 2),
             "expenses": round(curr_expenses, 2),
             "savings": round(curr_savings, 2),
             "savings_rate": round(curr_savings_rate, 1),
             "spending_mom": round(spending_mom, 1),
+            "person_spending": person_spending,
             "budget_status": budget_status,
+            "budget_warnings": budget_warnings,
             "trend": trend,
             "top_categories": [{"name": c, "amount": round(a, 2)} for c, a in cat_spending],
+            "recent_transactions": recent_txns,
         })
+
+    @app.route("/api/quick-expense", methods=["POST"])
+    def api_quick_expense():
+        """Add a quick one-off expense (cash, misc) directly to the Manual Entry tab."""
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Invalid JSON"}), 400
+
+        expense_date = data.get("date", "")
+        description = data.get("description", "").strip()
+        amount = data.get("amount", 0)
+        category = data.get("category", "Other")
+        person = data.get("person", "")
+
+        if not expense_date:
+            return jsonify({"error": "Date is required"}), 400
+        if not description:
+            return jsonify({"error": "Description is required"}), 400
+
+        valid_persons = [p.name for p in config.persons]
+        if person not in valid_persons:
+            return jsonify({"error": f"Invalid person. Must be one of: {valid_persons}"}), 400
+
+        try:
+            amount = float(amount)
+        except (ValueError, TypeError):
+            return jsonify({"error": "Amount must be a number"}), 400
+
+        if amount <= 0:
+            return jsonify({"error": "Amount must be greater than 0"}), 400
+
+        if category not in ALL_CATEGORIES:
+            category = "Other"
+
+        entries = [[expense_date, description, str(-amount), category, person]]
+        append_manual_entries(sheets_service, config.sheet_id, entries)
+        return jsonify({"success": True, "description": description, "amount": amount, "category": category})
 
     return app
 
