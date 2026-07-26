@@ -83,6 +83,9 @@
 
     <!-- Overview -->
     <div id="tab-home" class="tab-panel active" role="tabpanel">
+      <!-- Budget Warnings Banner -->
+      <div id="budget-warnings" class="budget-warnings"></div>
+
       <!-- Person Filter -->
       <div class="person-filter">
         <button class="person-btn active" data-person="">All</button>
@@ -108,6 +111,13 @@
           <div class="kpi-value" id="kpi-savings-rate">—</div>
         </div>
       </section>
+
+      <!-- Savings Goal -->
+      <section id="savings-goal" class="savings-goal-card"></section>
+
+      <!-- Per-Person Spending -->
+      <section id="person-spending" class="person-spending-grid"></section>
+
       <section id="income-breakdown" class="kpi-grid" style="margin-top:1rem">
         <div class="kpi-card">
           <div class="kpi-label">Taxes Paid</div>
@@ -129,6 +139,12 @@
       <div class="chart-wrapper" style="margin-top:1rem">
         <canvas id="chart-category-ranking"></canvas>
       </div>
+
+      <!-- Recent Transactions -->
+      <section class="recent-transactions-section">
+        <h3 class="section-title">Recent Transactions</h3>
+        <div id="recent-transactions" class="recent-transactions-list"></div>
+      </section>
     </div>
 
     <!-- Monthly -->

@@ -276,11 +276,15 @@ function filterByPeriod(data, monthKey) {
 
 function applyFilters() {
   updatePersonCounts();
+  renderBudgetWarnings();
+  renderSavingsGoal();
+  renderPersonSpending();
   renderKPIs();
   renderMonthlySummary();
   renderCategoryBreakdown();
   renderTrips();
   renderTransactions();
+  renderRecentTransactions();
 }
 
 function updatePersonCounts() {
@@ -295,6 +299,218 @@ function updatePersonCounts() {
     const label = person || 'All';
     btn.textContent = `${label} (${count})`;
   });
+}
+
+// ── Budget Warnings ──
+
+function renderBudgetWarnings() {
+  const container = document.getElementById('budget-warnings');
+  if (!container) return;
+
+  const prefix = getFilteredMonth();
+  const txns = prefix
+    ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
+    : rawTransactionData;
+
+  const excludeCats = new Set(['Income', 'Taxes', 'Retirement', 'Investment', 'Transfer', 'Healthcare', 'Utilities']);
+  const totalMonthsInSheet = rawMonthlyData.length || 1;
+
+  // Get monthly budget per category
+  const monthlyBudget = {};
+  rawBudgetData.forEach(r => {
+    if (!excludeCats.has(r.Category)) {
+      monthlyBudget[r.Category] = parseNum(r['Total Budget']) / totalMonthsInSheet;
+    }
+  });
+
+  // Get months in filtered data
+  const months = new Set();
+  txns.forEach(r => { const m = (r.Date || '').substring(0, 7); if (m) months.add(m); });
+  const numMonths = months.size || 1;
+
+  // Compute spending per category
+  const spending = {};
+  txns.forEach(r => {
+    const amt = parseNum(r.Amount);
+    const cat = r.Category || 'Other';
+    if (amt < 0 && !excludeCats.has(cat)) {
+      spending[cat] = (spending[cat] || 0) + Math.abs(amt);
+    }
+  });
+
+  // Find categories over 80%
+  const warnings = [];
+  Object.keys(monthlyBudget).forEach(cat => {
+    const budget = monthlyBudget[cat] * numMonths;
+    if (budget <= 0) return;
+    const actual = spending[cat] || 0;
+    const pct = (actual / budget) * 100;
+    if (pct >= 80) {
+      // Calculate days remaining if viewing current month
+      let daysRemaining = 0;
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      if (prefix === currentMonth) {
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        daysRemaining = daysInMonth - now.getDate();
+      }
+      warnings.push({ category: cat, pct: Math.round(pct), over: pct > 100, daysRemaining });
+    }
+  });
+
+  if (!warnings.length) { container.innerHTML = ''; return; }
+
+  warnings.sort((a, b) => b.pct - a.pct);
+  container.innerHTML = warnings.map(w => {
+    const cls = w.over ? 'over' : 'warn';
+    const msg = w.over
+      ? `${w.category} is over budget (${w.pct}%)`
+      : `${w.category} at ${w.pct}% of budget` + (w.daysRemaining > 0 ? ` with ${w.daysRemaining} days left` : '');
+    return `<div class="budget-warning-item ${cls}">${msg}</div>`;
+  }).join('');
+}
+
+// ── Savings Goal ──
+
+let savingsGoal = parseFloat(localStorage.getItem('ft-savings-goal')) || 0;
+
+function renderSavingsGoal() {
+  const container = document.getElementById('savings-goal');
+  if (!container) return;
+
+  // Compute net savings for current filter
+  const prefix = getFilteredMonth();
+  const txns = prefix
+    ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
+    : rawTransactionData;
+
+  let income = 0, expenses = 0;
+  txns.forEach(r => {
+    const amt = parseNum(r.Amount);
+    const cat = r.Category || 'Other';
+    if (cat === 'Transfer') return;
+    if (amt > 0) income += amt;
+    else expenses += Math.abs(amt);
+  });
+  const saved = Math.max(income - expenses, 0);
+
+  if (!savingsGoal) {
+    container.innerHTML = `
+      <div class="goal-header"><span class="goal-title">Savings Goal</span></div>
+      <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.5rem">Set a target to track progress.</p>
+      <div class="goal-setup">
+        <input type="number" id="goal-input" placeholder="e.g. 2000" min="0" step="100">
+        <button onclick="setSavingsGoal()">Set Goal</button>
+      </div>`;
+    return;
+  }
+
+  const pct = Math.min((saved / savingsGoal) * 100, 100);
+  container.innerHTML = `
+    <div class="goal-header">
+      <span class="goal-title">Savings Goal</span>
+      <button class="goal-edit-btn" onclick="clearSavingsGoal()">change</button>
+    </div>
+    <div class="goal-track"><div class="goal-fill" style="width:${pct}%"></div></div>
+    <div class="goal-labels">
+      <span>$${saved.toLocaleString(undefined, {maximumFractionDigits: 0})} saved</span>
+      <span class="goal-pct">${pct.toFixed(0)}%</span>
+      <span>$${savingsGoal.toLocaleString(undefined, {maximumFractionDigits: 0})} goal</span>
+    </div>`;
+}
+
+function setSavingsGoal() {
+  const input = document.getElementById('goal-input');
+  const val = parseFloat(input?.value);
+  if (val > 0) {
+    savingsGoal = val;
+    localStorage.setItem('ft-savings-goal', val);
+    renderSavingsGoal();
+  }
+}
+
+function clearSavingsGoal() {
+  savingsGoal = 0;
+  localStorage.removeItem('ft-savings-goal');
+  renderSavingsGoal();
+}
+
+// ── Per-Person Spending ──
+
+function renderPersonSpending() {
+  const container = document.getElementById('person-spending');
+  if (!container) return;
+
+  const prefix = getFilteredMonth();
+  const txns = prefix
+    ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
+    : rawTransactionData;
+
+  const persons = ['Raman', 'Sahana', 'Joint'];
+  const nonSpendingCats = new Set(['Transfer', 'Taxes', 'Retirement', 'Investment']);
+
+  const personTotals = {};
+  persons.forEach(p => { personTotals[p] = 0; });
+
+  txns.forEach(r => {
+    const amt = parseNum(r.Amount);
+    const cat = r.Category || 'Other';
+    const person = r.Person || '';
+    if (amt < 0 && !nonSpendingCats.has(cat) && person in personTotals) {
+      personTotals[person] += Math.abs(amt);
+    }
+  });
+
+  const hasData = Object.values(personTotals).some(v => v > 0);
+  if (!hasData) { container.innerHTML = ''; return; }
+
+  container.innerHTML = persons.map(p => {
+    const amt = personTotals[p];
+    return `<div class="person-spending-card">
+      <div class="person-spending-name">${p}</div>
+      <div class="person-spending-amount"><span class="money">$${amt.toLocaleString(undefined, {maximumFractionDigits: 0})}</span></div>
+      <div class="person-spending-label">spent</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Recent Transactions ──
+
+function renderRecentTransactions() {
+  const container = document.getElementById('recent-transactions');
+  if (!container) return;
+
+  const prefix = getFilteredMonth();
+  let txns = prefix
+    ? rawTransactionData.filter(r => (r.Date || '').startsWith(prefix))
+    : rawTransactionData;
+
+  // Apply person filter if active
+  if (overviewPerson) {
+    txns = txns.filter(r => r.Person === overviewPerson);
+  }
+
+  // Sort by date descending, take last 30
+  const sorted = [...txns].sort((a, b) => (b.Date || '').localeCompare(a.Date || '')).slice(0, 30);
+
+  if (!sorted.length) {
+    container.innerHTML = '<p style="padding:1rem;text-align:center;color:var(--text-muted);font-size:0.8rem">No transactions for this period.</p>';
+    return;
+  }
+
+  container.innerHTML = sorted.map(r => {
+    const amt = parseNum(r.Amount);
+    const isIncome = amt > 0;
+    const cls = isIncome ? 'income' : 'expense';
+    const sign = isIncome ? '+' : '-';
+    const formatted = Math.abs(amt).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const date = (r.Date || '').slice(5); // MM-DD
+    return `<div class="recent-txn-item">
+      <span class="recent-txn-date">${date}</span>
+      <span class="recent-txn-desc">${r.Description || ''}<span class="recent-txn-cat">${r.Category || ''}</span></span>
+      <span class="recent-txn-amount ${cls}">${sign}<span class="money">$${formatted}</span></span>
+    </div>`;
+  }).join('');
 }
 
 // ── KPIs ──
@@ -1467,6 +1683,7 @@ function initMenu() {
       overviewPerson = btn.dataset.person;
       renderKPIs();
       renderCategoryBreakdown();
+      renderRecentTransactions();
     });
   });
 }
