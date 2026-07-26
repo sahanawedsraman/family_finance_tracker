@@ -9,6 +9,8 @@ import logging
 import os
 import sys
 import tempfile
+from collections import Counter
+from datetime import datetime as _dt
 
 from src.auth import build_drive_service, build_sheets_service, get_credentials
 from src.categorizer import categorize_transactions
@@ -29,6 +31,7 @@ from src.sheets import (
     append_manual_entries,
     create_or_get_sheet,
     read_existing_transactions,
+    read_manual_entries,
     write_to_sheet,
     write_transactions_tab,
 )
@@ -166,8 +169,6 @@ def run_pipeline(config_path="config.yaml", dry_run=False, show_report=True):
     manual_txns = []
     if config.sheet_id:
         try:
-            from src.sheets import read_manual_entries
-
             manual_txns = read_manual_entries(sheets_service, config.sheet_id)
             if manual_txns:
                 logger.info("Read %d manual entries from Sheet", len(manual_txns))
@@ -235,7 +236,8 @@ def run_pipeline(config_path="config.yaml", dry_run=False, show_report=True):
     # Step 9: Write transactions (merges with existing, preserves manual edits)
     if dry_run:
         print(f"Would process {len(all_transactions)} new transactions")
-        print(f"Categories: {dict(sorted({t.category: sum(1 for x in all_transactions if x.category == t.category) for t in all_transactions}.items(), key=lambda x: -x[1]))}")
+        cat_counts = Counter(t.category for t in all_transactions)
+        print(f"Categories: {dict(cat_counts.most_common())}")
         return summary
 
     try:
@@ -246,8 +248,6 @@ def run_pipeline(config_path="config.yaml", dry_run=False, show_report=True):
         write_transactions_tab(sheets_service, spreadsheet_id, all_transactions)
 
         # Step 9b: Read back ALL merged transactions (includes manual category edits)
-        from datetime import datetime as _dt
-
         merged_rows = read_existing_transactions(sheets_service, spreadsheet_id)
         all_merged_txns = []
         for r in merged_rows:
@@ -262,8 +262,6 @@ def run_pipeline(config_path="config.yaml", dry_run=False, show_report=True):
                 amount = float(str(r.get("Amount", 0)).replace(",", "").replace("$", ""))
             except ValueError:
                 continue
-            from src.models import Transaction as _Txn
-
             all_merged_txns.append(Transaction(
                 date=txn_date,
                 description=r.get("Description", ""),
@@ -816,7 +814,6 @@ def _print_health_check(config_path: str) -> None:
 
         # Read all transactions and manual entries
         txns = read_existing_transactions(sheets_service, config.sheet_id)
-        from src.sheets import read_manual_entries
         manual_entries = read_manual_entries(sheets_service, config.sheet_id)
 
         today = date.today()

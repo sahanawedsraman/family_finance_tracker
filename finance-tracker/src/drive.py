@@ -89,7 +89,8 @@ SHORTCUT_MIME_TYPE = "application/vnd.google-apps.shortcut"
 
 def _find_or_create_subfolder(service, parent_id: str, name: str) -> str:
     """Find a subfolder by name or create it. Returns the folder ID."""
-    query = f"'{parent_id}' in parents and name = '{name}' and mimeType = '{FOLDER_MIME_TYPE}' and trashed = false"
+    safe_name = name.replace("\\", "\\\\").replace("'", "\\'")
+    query = f"'{parent_id}' in parents and name = '{safe_name}' and mimeType = '{FOLDER_MIME_TYPE}' and trashed = false"
     result = retry_api_call(lambda: service.files().list(q=query, fields="files(id)").execute())
     files = result.get("files", [])
     if files:

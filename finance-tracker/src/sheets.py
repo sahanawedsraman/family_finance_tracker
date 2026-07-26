@@ -40,7 +40,7 @@ ALL_CATEGORIES = [
     "Groceries", "Dining", "Utilities", "Transportation", "Entertainment",
     "Healthcare", "Amazon", "Shopping", "Subscriptions", "Housing", "Travel",
     "Income", "Taxes", "Transfer", "Investment", "Retirement", "Insurance",
-    "Education", "Childcare", "Fees", "Other",
+    "Education", "Childcare", "Pets", "Fees", "Other",
 ]
 
 MANUAL_ENTRY_CATEGORIES = ["Gross Pay", "Taxes", "Retirement", "Benefits"]

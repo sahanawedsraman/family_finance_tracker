@@ -3,98 +3,260 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Finance Tracker — Monthly Update</title>
+  <title>Finance Tracker</title>
   <style>
     :root {
-      --bg: #f8f9fa;
-      --card: #ffffff;
-      --border: #e2e8f0;
-      --text: #1a202c;
-      --text-muted: #718096;
-      --primary: #4f46e5;
-      --primary-hover: #4338ca;
-      --green: #059669;
-      --red: #dc2626;
-      --yellow: #d97706;
+      color-scheme: light;
+      --surface-1: #fcfcfb;
+      --surface-2: #f9f9f7;
+      --text-primary: #0b0b0b;
+      --text-secondary: #52514e;
+      --text-muted: #898781;
+      --border: #e1e0d9;
+      --border-strong: #c3c2b7;
+      --series-1: #2a78d6;
+      --series-2: #eb6834;
+      --series-3: #1baf7a;
+      --series-4: #eda100;
+      --series-5: #e87ba4;
+      --series-6: #008300;
+      --good: #006300;
+      --warning: #d97706;
+      --critical: #d03b3b;
       --radius: 8px;
+      --radius-sm: 4px;
     }
+    @media (prefers-color-scheme: dark) {
+      :root:where(:not([data-theme="light"])) {
+        color-scheme: dark;
+        --surface-1: #1a1a19;
+        --surface-2: #0d0d0d;
+        --text-primary: #ffffff;
+        --text-secondary: #c3c2b7;
+        --text-muted: #898781;
+        --border: #2c2c2a;
+        --border-strong: #383835;
+        --series-1: #3987e5;
+        --series-2: #d95926;
+        --series-3: #199e70;
+        --series-4: #c98500;
+        --series-5: #d55181;
+        --series-6: #008300;
+        --good: #0ca30c;
+        --warning: #fab219;
+        --critical: #e34948;
+      }
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --surface-1: #1a1a19;
+      --surface-2: #0d0d0d;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #898781;
+      --border: #2c2c2a;
+      --border-strong: #383835;
+      --series-1: #3987e5;
+      --series-2: #d95926;
+      --series-3: #199e70;
+      --series-4: #c98500;
+      --series-5: #d55181;
+      --series-6: #008300;
+      --good: #0ca30c;
+      --warning: #fab219;
+      --critical: #e34948;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
-    .container { max-width: 800px; margin: 0 auto; padding: 1.5rem; }
-    h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; }
-    h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text); }
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--surface-2); color: var(--text-primary); line-height: 1.5; }
+    .container { max-width: 900px; margin: 0 auto; padding: 1.5rem; }
+
+    /* Header */
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+    .header h1 { font-size: 1.4rem; font-weight: 600; }
+    .theme-toggle { background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.4rem 0.6rem; cursor: pointer; color: var(--text-secondary); font-size: 0.8rem; }
+    .theme-toggle:hover { border-color: var(--border-strong); color: var(--text-primary); }
 
     /* Tabs */
-    .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 1.5rem; }
-    .tab { padding: 0.75rem 1.25rem; border: none; background: none; cursor: pointer; font-size: 0.9rem; font-weight: 500; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
-    .tab:hover { color: var(--text); }
-    .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; overflow-x: auto; }
+    .tab { padding: 0.6rem 1rem; border: none; background: none; cursor: pointer; font-size: 0.85rem; font-weight: 500; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s; white-space: nowrap; }
+    .tab:hover { color: var(--text-primary); }
+    .tab.active { color: var(--series-1); border-bottom-color: var(--series-1); }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
     /* Cards */
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem; }
+    .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+    .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem; }
+
+    /* Stat tiles */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+    .stat-tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
+    .stat-label { font-size: 0.75rem; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.25rem; }
+    .stat-value { font-size: 1.5rem; font-weight: 600; color: var(--text-primary); }
+    .stat-delta { font-size: 0.75rem; font-weight: 500; margin-top: 0.25rem; }
+    .stat-delta.positive { color: var(--good); }
+    .stat-delta.negative { color: var(--critical); }
+
+    /* Budget meters */
+    .budget-list { display: flex; flex-direction: column; gap: 0.6rem; }
+    .budget-item { display: grid; grid-template-columns: 120px 1fr 60px; gap: 0.75rem; align-items: center; font-size: 0.8rem; }
+    .budget-label { color: var(--text-secondary); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .budget-track { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; position: relative; }
+    .budget-fill { height: 100%; border-radius: 4px 0 0 4px; transition: width 0.3s ease; }
+    .budget-fill.ok { background: var(--series-1); }
+    .budget-fill.warn { background: var(--warning); }
+    .budget-fill.over { background: var(--critical); }
+    .budget-pct { text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+
+    /* Bar chart */
+    .chart-container { position: relative; }
+    .chart-bars { display: flex; align-items: flex-end; gap: 2px; height: 140px; padding-top: 1.5rem; }
+    .chart-bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.25rem; height: 100%; justify-content: flex-end; }
+    .chart-bar { width: 100%; max-width: 24px; border-radius: 4px 4px 0 0; transition: height 0.3s ease; position: relative; }
+    .chart-bar:hover { opacity: 0.85; }
+    .chart-bar-income { background: var(--series-1); }
+    .chart-bar-expense { background: var(--series-2); }
+    .chart-bar-pair { display: flex; gap: 2px; align-items: flex-end; flex: 1; justify-content: center; height: 100%; }
+    .chart-x-label { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.4rem; white-space: nowrap; }
+    .chart-legend { display: flex; gap: 1rem; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
+    .chart-legend-item { display: flex; align-items: center; gap: 0.35rem; }
+    .chart-legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* Category breakdown */
+    .cat-list { display: flex; flex-direction: column; gap: 0.4rem; }
+    .cat-item { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; align-items: center; font-size: 0.8rem; padding: 0.3rem 0; }
+    .cat-name { color: var(--text-secondary); }
+    .cat-amount { font-weight: 500; font-variant-numeric: tabular-nums; }
 
     /* Forms */
-    label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.25rem; color: var(--text-muted); }
-    input, select { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.9rem; margin-bottom: 0.75rem; }
-    input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+    label { display: block; font-size: 0.8rem; font-weight: 500; margin-bottom: 0.2rem; color: var(--text-muted); }
+    input, select { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.85rem; margin-bottom: 0.6rem; background: var(--surface-1); color: var(--text-primary); }
+    input:focus, select:focus { outline: none; border-color: var(--series-1); box-shadow: 0 0 0 2px rgba(42,120,214,0.15); }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; }
 
     /* Buttons */
-    .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.25rem; border: none; border-radius: var(--radius); font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.15s; }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-primary:hover { background: var(--primary-hover); }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-success { background: var(--green); color: white; }
-    .btn-danger { background: var(--red); color: white; }
+    .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; border: none; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: var(--series-1); color: white; }
+    .btn-danger { background: var(--critical); color: white; }
 
     /* Upload zone */
-    .drop-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2rem; text-align: center; color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
-    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: rgba(79,70,229,0.03); }
+    .drop-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2rem; text-align: center; color: var(--text-muted); cursor: pointer; transition: border-color 0.15s; }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--series-1); }
     .drop-zone input[type="file"] { display: none; }
 
     /* Messages */
-    .msg { padding: 0.75rem 1rem; border-radius: var(--radius); margin-bottom: 1rem; font-size: 0.85rem; }
-    .msg-success { background: #d1fae5; color: #065f46; }
-    .msg-error { background: #fee2e2; color: #991b1b; }
-    .msg-info { background: #dbeafe; color: #1e40af; }
+    .msg { padding: 0.6rem 0.8rem; border-radius: var(--radius-sm); margin-bottom: 0.75rem; font-size: 0.8rem; }
+    .msg-success { background: rgba(0,99,0,0.08); color: var(--good); border: 1px solid rgba(0,99,0,0.15); }
+    .msg-error { background: rgba(208,59,59,0.08); color: var(--critical); border: 1px solid rgba(208,59,59,0.15); }
+    .msg-info { background: rgba(42,120,214,0.08); color: var(--series-1); border: 1px solid rgba(42,120,214,0.15); }
 
     /* Transaction list */
-    .txn-item { display: grid; grid-template-columns: 90px 1fr 90px 160px; gap: 0.75rem; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    .txn-item { display: grid; grid-template-columns: 80px 1fr 80px 140px; gap: 0.5rem; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; }
     .txn-item:last-child { border-bottom: none; }
-    .txn-desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .txn-amount { text-align: right; font-weight: 500; }
-    .txn-select { padding: 0.3rem; margin: 0; font-size: 0.8rem; }
+    .txn-desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+    .txn-amount { text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .txn-select { padding: 0.25rem; margin: 0; font-size: 0.75rem; }
 
     /* Pipeline output */
-    .pipeline-output { font-family: 'SF Mono', 'Monaco', 'Menlo', monospace; font-size: 0.8rem; background: #1a202c; color: #e2e8f0; padding: 1rem; border-radius: var(--radius); white-space: pre-wrap; max-height: 400px; overflow-y: auto; }
+    .pipeline-output { font-family: 'SF Mono', Monaco, Menlo, monospace; font-size: 0.75rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-secondary); padding: 0.75rem; border-radius: var(--radius-sm); white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
 
     /* Loading */
-    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .summary { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; }
-    .count-badge { background: var(--primary); color: white; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 10px; margin-left: 0.5rem; }
+    .loading-skeleton { background: var(--border); border-radius: var(--radius-sm); animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    .count-badge { background: var(--series-1); color: white; font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 8px; margin-left: 0.4rem; }
+    .summary { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* Confirm dialog */
+    .dialog-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .dialog { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; max-width: 400px; width: 90%; }
+    .dialog h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+    .dialog p { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem; }
+    .dialog-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+    .dialog-actions .btn-cancel { background: var(--border); color: var(--text-primary); }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .container { padding: 1rem; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+      .txn-item { grid-template-columns: 1fr 1fr; gap: 0.25rem; }
+      .txn-item .txn-desc { grid-column: 1 / -1; }
+      .budget-item { grid-template-columns: 90px 1fr 50px; }
+      .tab { padding: 0.5rem 0.75rem; font-size: 0.8rem; }
+    }
+
+    /* Tooltip */
+    .tooltip { position: absolute; background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.4rem 0.6rem; font-size: 0.7rem; color: var(--text-primary); pointer-events: none; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 10; transform: translate(-50%, -100%); margin-top: -8px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Finance Tracker — Monthly Update</h1>
+    <div class="header">
+      <h1>Finance Tracker</h1>
+      <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">Dark</button>
+    </div>
 
     <div class="tabs">
-      <button class="tab active" data-tab="upload">Upload Statements</button>
+      <button class="tab active" data-tab="dashboard">Dashboard</button>
+      <button class="tab" data-tab="upload">Upload</button>
       <button class="tab" data-tab="paystub">Pay Stub</button>
-      <button class="tab" data-tab="categories">Fix Categories<span id="cat-badge" class="count-badge" style="display:none"></span></button>
-      <button class="tab" data-tab="pipeline">Run Pipeline</button>
+      <button class="tab" data-tab="categories">Categories<span id="cat-badge" class="count-badge" style="display:none"></span></button>
+      <button class="tab" data-tab="pipeline">Pipeline</button>
+    </div>
+
+    <!-- Dashboard Tab -->
+    <div id="tab-dashboard" class="tab-panel active">
+      <div id="dash-loading">
+        <div class="stats-grid">
+          <div class="stat-tile"><div class="loading-skeleton" style="height:60px"></div></div>
+          <div class="stat-tile"><div class="loading-skeleton" style="height:60px"></div></div>
+          <div class="stat-tile"><div class="loading-skeleton" style="height:60px"></div></div>
+          <div class="stat-tile"><div class="loading-skeleton" style="height:60px"></div></div>
+        </div>
+      </div>
+      <div id="dash-content" style="display:none">
+        <div class="stats-grid" id="dash-stats"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+          <div class="card">
+            <h2>Monthly Trend</h2>
+            <div class="chart-legend">
+              <span class="chart-legend-item"><span class="chart-legend-dot" style="background:var(--series-1)"></span>Income</span>
+              <span class="chart-legend-item"><span class="chart-legend-dot" style="background:var(--series-2)"></span>Spending</span>
+            </div>
+            <div class="chart-container">
+              <div class="chart-bars" id="dash-trend"></div>
+            </div>
+          </div>
+          <div class="card">
+            <h2>Top Categories</h2>
+            <div class="cat-list" id="dash-categories"></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:0.75rem">
+          <h2>Budget Status</h2>
+          <div class="budget-list" id="dash-budgets"></div>
+        </div>
+      </div>
+      <div id="dash-empty" style="display:none">
+        <div class="card">
+          <p class="summary">No transaction data yet. Upload statements and run the pipeline to see your dashboard.</p>
+        </div>
+      </div>
+      <div id="dash-error" style="display:none"></div>
     </div>
 
     <!-- Upload Tab -->
-    <div id="tab-upload" class="tab-panel active">
+    <div id="tab-upload" class="tab-panel">
       <div class="card">
         <h2>Upload Bank Statements</h2>
-        <div class="form-row" style="margin-bottom:1rem">
+        <div class="form-row" style="margin-bottom:0.75rem">
           <div>
             <label for="upload-person">Person</label>
             <select id="upload-person"></select>
@@ -103,10 +265,10 @@
         </div>
         <div class="drop-zone" id="drop-zone">
           <p><strong>Drag & drop files here</strong></p>
-          <p style="font-size:0.8rem;margin-top:0.5rem">or click to browse (CSV, PDF, Excel)</p>
+          <p style="font-size:0.75rem;margin-top:0.4rem;color:var(--text-muted)">or click to browse (CSV, PDF, Excel)</p>
           <input type="file" id="file-input" accept=".csv,.pdf,.xlsx,.xls" multiple>
         </div>
-        <div id="upload-msg" style="margin-top:1rem"></div>
+        <div id="upload-msg" style="margin-top:0.75rem"></div>
       </div>
     </div>
 
@@ -115,51 +277,24 @@
       <div class="card">
         <h2>Enter Pay Stub</h2>
         <div class="form-row">
-          <div>
-            <label for="ps-person">Person</label>
-            <select id="ps-person"></select>
-          </div>
-          <div>
-            <label for="ps-date">Pay Date</label>
-            <input type="date" id="ps-date">
-          </div>
+          <div><label for="ps-person">Person</label><select id="ps-person"></select></div>
+          <div><label for="ps-date">Pay Date</label><input type="date" id="ps-date"></div>
         </div>
         <div class="form-row">
-          <div>
-            <label for="ps-gross">Gross Pay</label>
-            <input type="number" id="ps-gross" step="0.01" min="0" placeholder="5000.00">
-          </div>
-          <div>
-            <label for="ps-federal">Federal Tax</label>
-            <input type="number" id="ps-federal" step="0.01" min="0" placeholder="800.00">
-          </div>
+          <div><label for="ps-gross">Gross Pay</label><input type="number" id="ps-gross" step="0.01" min="0" placeholder="5000.00"></div>
+          <div><label for="ps-federal">Federal Tax</label><input type="number" id="ps-federal" step="0.01" min="0" placeholder="800.00"></div>
         </div>
         <div class="form-row">
-          <div>
-            <label for="ps-state">State Tax</label>
-            <input type="number" id="ps-state" step="0.01" min="0" placeholder="300.00">
-          </div>
-          <div>
-            <label for="ps-fica">FICA (SS + Medicare)</label>
-            <input type="number" id="ps-fica" step="0.01" min="0" placeholder="380.00">
-          </div>
+          <div><label for="ps-state">State Tax</label><input type="number" id="ps-state" step="0.01" min="0" placeholder="300.00"></div>
+          <div><label for="ps-fica">FICA (SS + Medicare)</label><input type="number" id="ps-fica" step="0.01" min="0" placeholder="380.00"></div>
         </div>
         <div class="form-row">
-          <div>
-            <label for="ps-401k">401k Contribution</label>
-            <input type="number" id="ps-401k" step="0.01" min="0" placeholder="500.00">
-          </div>
-          <div>
-            <label for="ps-health">Health Insurance</label>
-            <input type="number" id="ps-health" step="0.01" min="0" placeholder="200.00">
-          </div>
+          <div><label for="ps-401k">401k Contribution</label><input type="number" id="ps-401k" step="0.01" min="0" placeholder="500.00"></div>
+          <div><label for="ps-health">Health Insurance</label><input type="number" id="ps-health" step="0.01" min="0" placeholder="200.00"></div>
         </div>
         <div class="form-row">
-          <div>
-            <label for="ps-other">Other Deductions</label>
-            <input type="number" id="ps-other" step="0.01" min="0" placeholder="0.00" value="0">
-          </div>
-          <div style="display:flex;align-items:flex-end;padding-bottom:0.75rem">
+          <div><label for="ps-other">Other Deductions</label><input type="number" id="ps-other" step="0.01" min="0" placeholder="0.00" value="0"></div>
+          <div style="display:flex;align-items:flex-end;padding-bottom:0.6rem">
             <button class="btn btn-primary" id="btn-paystub">Submit Pay Stub</button>
           </div>
         </div>
@@ -171,7 +306,7 @@
     <div id="tab-categories" class="tab-panel">
       <div class="card">
         <h2>Fix Uncategorized Transactions</h2>
-        <p class="summary" style="margin-bottom:1rem">Transactions marked as "Other" that need a proper category.</p>
+        <p class="summary" style="margin-bottom:0.75rem">Transactions marked as "Other" that need a proper category.</p>
         <div id="cat-list"></div>
         <div id="cat-msg"></div>
       </div>
@@ -181,16 +316,32 @@
     <div id="tab-pipeline" class="tab-panel">
       <div class="card">
         <h2>Run Pipeline</h2>
-        <p class="summary" style="margin-bottom:1rem">Process new statements, categorize transactions, and update metrics.</p>
+        <p class="summary" style="margin-bottom:0.75rem">Process new statements, categorize transactions, and update metrics.</p>
         <button class="btn btn-primary" id="btn-pipeline">Run Full Pipeline</button>
-        <div id="pipeline-msg" style="margin-top:1rem"></div>
-        <div id="pipeline-output" class="pipeline-output" style="display:none;margin-top:1rem"></div>
+        <div id="pipeline-msg" style="margin-top:0.75rem"></div>
+        <div id="pipeline-output" class="pipeline-output" style="display:none;margin-top:0.75rem"></div>
       </div>
     </div>
   </div>
 
   <script>
-    // Tab switching
+    // -- Theme toggle --
+    const themeBtn = document.getElementById('theme-toggle');
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      themeBtn.textContent = theme === 'dark' ? 'Light' : 'Dark';
+      localStorage.setItem('ft-theme', theme);
+    }
+    themeBtn.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      setTheme(current === 'dark' ? 'light' : 'dark');
+    });
+    const saved = localStorage.getItem('ft-theme');
+    if (saved) setTheme(saved);
+    else if (window.matchMedia('(prefers-color-scheme: dark)').matches) setTheme('dark');
+    else setTheme('light');
+
+    // -- Tab switching --
     document.querySelectorAll('.tab').forEach(tab => {
       tab.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -203,53 +354,146 @@
     let appConfig = { persons: [], categories: [] };
     let csrfToken = '';
 
-    // Load config and CSRF token on start
+    function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    function fmt(n) { return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
+
+    function showMsg(id, msg, type) {
+      document.getElementById(id).innerHTML = `<div class="msg msg-${type}">${esc(msg)}</div>`;
+    }
+
+    // -- Init --
     async function loadConfig() {
-      const [configRes, csrfRes] = await Promise.all([
-        fetch('/api/config'),
-        fetch('/api/csrf-token'),
-      ]);
-      appConfig = await configRes.json();
-      const csrfData = await csrfRes.json();
-      csrfToken = csrfData.token;
-      populatePersonDropdowns();
-      loadUncategorized();
+      try {
+        const [configRes, csrfRes] = await Promise.all([
+          fetch('/api/config'),
+          fetch('/api/csrf-token'),
+        ]);
+        if (!configRes.ok) throw new Error('Failed to load configuration');
+        appConfig = await configRes.json();
+        const csrfData = await csrfRes.json();
+        csrfToken = csrfData.token;
+        populatePersonDropdowns();
+        loadDashboard();
+        loadUncategorized();
+      } catch (e) {
+        document.getElementById('dash-loading').style.display = 'none';
+        document.getElementById('dash-error').style.display = 'block';
+        document.getElementById('dash-error').innerHTML = `<div class="msg msg-error">Failed to connect to the server. Check that the backend is running.</div>`;
+      }
     }
 
     function populatePersonDropdowns() {
       ['upload-person', 'ps-person'].forEach(id => {
         const sel = document.getElementById(id);
-        sel.innerHTML = '';
-        appConfig.persons.forEach(p => {
-          sel.innerHTML += `<option value="${esc(p)}">${esc(p)}</option>`;
-        });
+        sel.innerHTML = appConfig.persons.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
       });
     }
 
-    function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    // -- Dashboard --
+    async function loadDashboard() {
+      try {
+        const res = await fetch('/api/dashboard');
+        if (!res.ok) throw new Error('Dashboard fetch failed');
+        const data = await res.json();
+        document.getElementById('dash-loading').style.display = 'none';
 
-    function showMsg(containerId, msg, type) {
-      document.getElementById(containerId).innerHTML = `<div class="msg msg-${type}">${esc(msg)}</div>`;
+        if (data.empty) {
+          document.getElementById('dash-empty').style.display = 'block';
+          return;
+        }
+
+        document.getElementById('dash-content').style.display = 'block';
+        renderStats(data);
+        renderTrend(data.trend);
+        renderCategories(data.top_categories);
+        renderBudgets(data.budget_status);
+      } catch (e) {
+        document.getElementById('dash-loading').style.display = 'none';
+        document.getElementById('dash-error').style.display = 'block';
+        document.getElementById('dash-error').innerHTML = `<div class="msg msg-error">Failed to load dashboard data.</div>`;
+      }
+    }
+
+    function renderStats(data) {
+      const savingsClass = data.savings >= 0 ? 'positive' : 'negative';
+      const momArrow = data.spending_mom >= 0 ? '+' : '';
+      const momClass = data.spending_mom <= 0 ? 'positive' : 'negative';
+      document.getElementById('dash-stats').innerHTML = `
+        <div class="stat-tile">
+          <div class="stat-label">Income</div>
+          <div class="stat-value">$${fmt(data.income)}</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-label">Spending</div>
+          <div class="stat-value">$${fmt(data.expenses)}</div>
+          <div class="stat-delta ${momClass}">${momArrow}${data.spending_mom.toFixed(1)}% vs last month</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-label">Saved</div>
+          <div class="stat-value ${savingsClass}">$${fmt(data.savings)}</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-label">Savings Rate</div>
+          <div class="stat-value">${data.savings_rate.toFixed(1)}%</div>
+        </div>
+      `;
+    }
+
+    function renderTrend(trend) {
+      if (!trend || !trend.length) return;
+      const maxVal = Math.max(...trend.map(t => Math.max(t.income, t.expenses)));
+      const container = document.getElementById('dash-trend');
+      container.innerHTML = trend.map(t => {
+        const incH = maxVal > 0 ? (t.income / maxVal * 100) : 0;
+        const expH = maxVal > 0 ? (t.expenses / maxVal * 100) : 0;
+        const monthLabel = t.month.slice(5);
+        return `
+          <div class="chart-bar-group">
+            <div class="chart-bar-pair">
+              <div class="chart-bar chart-bar-income" style="height:${incH}%" title="Income: $${fmt(t.income)}"></div>
+              <div class="chart-bar chart-bar-expense" style="height:${expH}%" title="Spending: $${fmt(t.expenses)}"></div>
+            </div>
+            <span class="chart-x-label">${monthLabel}</span>
+          </div>`;
+      }).join('');
+    }
+
+    function renderCategories(cats) {
+      if (!cats || !cats.length) return;
+      document.getElementById('dash-categories').innerHTML = cats.map(c => `
+        <div class="cat-item">
+          <span class="cat-name">${esc(c.name)}</span>
+          <span class="cat-amount">$${fmt(c.amount)}</span>
+        </div>
+      `).join('');
+    }
+
+    function renderBudgets(budgets) {
+      if (!budgets || !budgets.length) return;
+      document.getElementById('dash-budgets').innerHTML = budgets.map(b => {
+        const pct = Math.min(b.pct, 100);
+        const cls = b.pct > 100 ? 'over' : b.pct > 80 ? 'warn' : 'ok';
+        return `
+          <div class="budget-item">
+            <span class="budget-label">${esc(b.category)}</span>
+            <div class="budget-track"><div class="budget-fill ${cls}" style="width:${pct}%"></div></div>
+            <span class="budget-pct">${b.pct.toFixed(0)}%</span>
+          </div>`;
+      }).join('');
     }
 
     // -- Upload --
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
-
     dropZone.addEventListener('click', () => fileInput.click());
     dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
     dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-    dropZone.addEventListener('drop', e => {
-      e.preventDefault();
-      dropZone.classList.remove('dragover');
-      handleFiles(e.dataTransfer.files);
-    });
+    dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
     fileInput.addEventListener('change', () => handleFiles(fileInput.files));
 
     async function handleFiles(files) {
       const person = document.getElementById('upload-person').value;
       if (!person) { showMsg('upload-msg', 'Select a person first', 'error'); return; }
-
       let uploaded = 0, errors = [];
       for (const file of files) {
         const form = new FormData();
@@ -261,27 +505,19 @@
           const data = await res.json();
           if (data.success) uploaded++;
           else errors.push(`${file.name}: ${data.error}`);
-        } catch (e) {
-          errors.push(`${file.name}: Network error`);
-        }
+        } catch (e) { errors.push(`${file.name}: Network error`); }
       }
-
-      if (errors.length) {
-        showMsg('upload-msg', `Uploaded ${uploaded} file(s). Errors: ${errors.join('; ')}`, uploaded ? 'info' : 'error');
-      } else {
-        showMsg('upload-msg', `Uploaded ${uploaded} file(s) to ${person}'s folder`, 'success');
-      }
+      if (errors.length) showMsg('upload-msg', `Uploaded ${uploaded} file(s). Errors: ${errors.join('; ')}`, uploaded ? 'info' : 'error');
+      else showMsg('upload-msg', `Uploaded ${uploaded} file(s) to ${person}'s folder`, 'success');
       fileInput.value = '';
     }
 
     // -- Pay Stub --
     document.getElementById('ps-date').value = new Date().toISOString().split('T')[0];
-
     document.getElementById('btn-paystub').addEventListener('click', async () => {
       const btn = document.getElementById('btn-paystub');
       btn.disabled = true;
       btn.innerHTML = '<span class="spinner"></span> Saving...';
-
       const body = {
         person: document.getElementById('ps-person').value,
         date: document.getElementById('ps-date').value,
@@ -293,61 +529,48 @@
         health: parseFloat(document.getElementById('ps-health').value) || 0,
         other: parseFloat(document.getElementById('ps-other').value) || 0,
       };
-
       if (!body.date) { showMsg('ps-msg', 'Date is required', 'error'); btn.disabled = false; btn.textContent = 'Submit Pay Stub'; return; }
       if (body.gross <= 0) { showMsg('ps-msg', 'Gross pay must be greater than 0', 'error'); btn.disabled = false; btn.textContent = 'Submit Pay Stub'; return; }
-
       try {
         const res = await fetch('/api/paystub', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
         const data = await res.json();
         if (data.success) {
-          const net = data.net_takehome;
-          showMsg('ps-msg', `Pay stub saved (${data.entries} entries). Net take-home: $${net.toLocaleString(undefined, {minimumFractionDigits: 2})}`, 'success');
-          // Clear form
-          ['ps-gross', 'ps-federal', 'ps-state', 'ps-fica', 'ps-401k', 'ps-health'].forEach(id => document.getElementById(id).value = '');
+          showMsg('ps-msg', `Pay stub saved (${data.entries} entries). Net take-home: $${data.net_takehome.toLocaleString(undefined, {minimumFractionDigits: 2})}`, 'success');
+          ['ps-gross','ps-federal','ps-state','ps-fica','ps-401k','ps-health'].forEach(id => document.getElementById(id).value = '');
           document.getElementById('ps-other').value = '0';
-        } else {
-          showMsg('ps-msg', data.error, 'error');
-        }
-      } catch (e) {
-        showMsg('ps-msg', 'Network error', 'error');
-      }
+        } else showMsg('ps-msg', data.error, 'error');
+      } catch (e) { showMsg('ps-msg', 'Network error', 'error'); }
       btn.disabled = false;
       btn.textContent = 'Submit Pay Stub';
     });
 
     // -- Categories --
     async function loadUncategorized() {
-      const res = await fetch('/api/uncategorized');
-      const data = await res.json();
-      const list = document.getElementById('cat-list');
-      const badge = document.getElementById('cat-badge');
-
-      if (!data.transactions.length) {
-        list.innerHTML = '<p class="summary">All transactions are categorized.</p>';
-        badge.style.display = 'none';
-        return;
-      }
-
-      badge.textContent = data.total;
-      badge.style.display = 'inline';
-
-      const options = appConfig.categories.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
-      list.innerHTML = data.transactions.slice(0, 50).map(t => `
-        <div class="txn-item" id="txn-row-${t.row}">
-          <span>${esc(t.date)}</span>
-          <span class="txn-desc" title="${esc(t.description)}">${esc(t.description)}</span>
-          <span class="txn-amount">${esc(t.amount)}</span>
-          <select class="txn-select" onchange="categorize(${t.row}, this.value)">
-            <option value="">Pick category...</option>
-            ${options}
-          </select>
-        </div>
-      `).join('');
-
-      if (data.total > 50) {
-        list.innerHTML += `<p class="summary">Showing 50 of ${data.total}. Fix these and refresh to see more.</p>`;
-      }
+      try {
+        const res = await fetch('/api/uncategorized');
+        const data = await res.json();
+        const list = document.getElementById('cat-list');
+        const badge = document.getElementById('cat-badge');
+        if (!data.transactions.length) {
+          list.innerHTML = '<p class="summary">All transactions are categorized.</p>';
+          badge.style.display = 'none';
+          return;
+        }
+        badge.textContent = data.total;
+        badge.style.display = 'inline';
+        const options = appConfig.categories.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+        list.innerHTML = data.transactions.slice(0, 50).map(t => `
+          <div class="txn-item" id="txn-row-${t.row}">
+            <span>${esc(t.date)}</span>
+            <span class="txn-desc" title="${esc(t.description)}">${esc(t.description)}</span>
+            <span class="txn-amount">${esc(t.amount)}</span>
+            <select class="txn-select" onchange="categorize(${t.row}, this.value)">
+              <option value="">Pick...</option>
+              ${options}
+            </select>
+          </div>`).join('');
+        if (data.total > 50) list.innerHTML += `<p class="summary" style="margin-top:0.5rem">Showing 50 of ${data.total}. Fix these and refresh to see more.</p>`;
+      } catch (e) { /* silent */ }
     }
 
     async function categorize(row, category) {
@@ -358,49 +581,57 @@
         if (data.success) {
           const el = document.getElementById('txn-row-' + row);
           if (el) { el.style.opacity = '0.4'; el.querySelector('select').disabled = true; }
-          // Update badge count
           const badge = document.getElementById('cat-badge');
           const current = parseInt(badge.textContent) || 0;
-          if (current > 1) { badge.textContent = current - 1; }
-          else { badge.style.display = 'none'; }
+          if (current > 1) badge.textContent = current - 1;
+          else badge.style.display = 'none';
         }
       } catch (e) { /* silent */ }
     }
 
     // -- Pipeline --
-    document.getElementById('btn-pipeline').addEventListener('click', async () => {
+    document.getElementById('btn-pipeline').addEventListener('click', () => {
+      // Confirmation dialog
+      const overlay = document.createElement('div');
+      overlay.className = 'dialog-overlay';
+      overlay.innerHTML = `
+        <div class="dialog">
+          <h3>Run Pipeline?</h3>
+          <p>This will process new statements from Drive, categorize transactions, and update your Google Sheet with fresh metrics.</p>
+          <div class="dialog-actions">
+            <button class="btn btn-cancel" id="dialog-cancel">Cancel</button>
+            <button class="btn btn-primary" id="dialog-confirm">Run Pipeline</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      overlay.querySelector('#dialog-cancel').addEventListener('click', () => overlay.remove());
+      overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+      overlay.querySelector('#dialog-confirm').addEventListener('click', () => { overlay.remove(); runPipeline(); });
+    });
+
+    async function runPipeline() {
       const btn = document.getElementById('btn-pipeline');
       const output = document.getElementById('pipeline-output');
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner"></span> Running pipeline...';
+      btn.innerHTML = '<span class="spinner"></span> Running...';
       output.style.display = 'none';
       document.getElementById('pipeline-msg').innerHTML = '';
-
       try {
         const res = await fetch('/api/run-pipeline', { method: 'POST' });
         const data = await res.json();
         if (data.success) {
-          let text = `Pipeline completed successfully.\n\n`;
-          text += `Files processed: ${data.files_processed}\n`;
-          text += `Files skipped (already processed): ${data.files_skipped}\n`;
-          text += `New transactions found: ${data.transactions_found}\n`;
-          if (data.errors.length) {
-            text += `\nWarnings:\n${data.errors.map(e => '  - ' + e).join('\n')}`;
-          }
+          let text = `Pipeline completed.\n\nFiles processed: ${data.files_processed}\nFiles skipped: ${data.files_skipped}\nTransactions found: ${data.transactions_found}`;
+          if (data.errors.length) text += `\n\nWarnings:\n${data.errors.map(e => '  - ' + e).join('\n')}`;
           output.textContent = text;
           output.style.display = 'block';
           showMsg('pipeline-msg', 'Pipeline ran successfully', 'success');
-          // Refresh categories
           loadUncategorized();
-        } else {
-          showMsg('pipeline-msg', `Pipeline failed: ${data.error}`, 'error');
-        }
-      } catch (e) {
-        showMsg('pipeline-msg', 'Network error', 'error');
-      }
+          loadDashboard();
+        } else showMsg('pipeline-msg', `Pipeline failed: ${data.error}`, 'error');
+      } catch (e) { showMsg('pipeline-msg', 'Network error', 'error'); }
       btn.disabled = false;
       btn.textContent = 'Run Full Pipeline';
-    });
+    }
 
     // Init
     loadConfig();

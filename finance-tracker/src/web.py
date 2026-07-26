@@ -9,7 +9,8 @@ import subprocess
 import sys
 import threading
 import webbrowser
-from datetime import date
+from collections import defaultdict
+from datetime import date, datetime, timedelta
 
 from flask import Flask, jsonify, render_template, request, session
 
@@ -19,6 +20,7 @@ from src.drive import upload_file
 from src.retry import retry_api_call
 from src.sheets import (
     ALL_CATEGORIES,
+    BUDGET_EXCLUDED_CATEGORIES,
     TAB_TRANSACTIONS,
     append_manual_entries,
     read_existing_transactions,
@@ -61,6 +63,11 @@ def create_app(config_path: str) -> Flask:
     @app.before_request
     def csrf_check():
         if request.method in ("POST", "PUT", "DELETE"):
+            # Reject cross-origin requests
+            origin = request.headers.get("Origin", "")
+            if origin and not origin.startswith("http://127.0.0.1"):
+                return jsonify({"error": "Request validation failed"}), 403
+
             content_type = request.content_type or ""
             if "application/json" in content_type:
                 return
@@ -235,6 +242,97 @@ def create_app(config_path: str) -> Flask:
             result = {"success": False, "error": "Pipeline execution failed. Check server logs for details."}
 
         return jsonify(result)
+
+    @app.route("/api/dashboard")
+    def api_dashboard():
+        """Return financial summary data for the dashboard view."""
+        txns = read_existing_transactions(sheets_service, config.sheet_id)
+        if not txns:
+            return jsonify({"empty": True})
+
+        today = date.today()
+        current_month = today.strftime("%Y-%m")
+
+        # Parse all transactions
+        monthly_data = defaultdict(lambda: {"income": 0.0, "expenses": 0.0, "categories": defaultdict(float)})
+        for t in txns:
+            date_str = t.get("Date", "")
+            if not date_str:
+                continue
+            month_key = date_str[:7]
+            category = t.get("Category", "Other")
+            if category == "Transfer":
+                continue
+            try:
+                amount = float(str(t.get("Amount", 0)).replace(",", "").replace("$", ""))
+            except (ValueError, TypeError):
+                continue
+            if amount > 0:
+                monthly_data[month_key]["income"] += amount
+            else:
+                monthly_data[month_key]["expenses"] += abs(amount)
+                if category not in BUDGET_EXCLUDED_CATEGORIES:
+                    monthly_data[month_key]["categories"][category] += abs(amount)
+
+        sorted_months = sorted(monthly_data.keys())
+        if not sorted_months:
+            return jsonify({"empty": True})
+
+        # Current month data
+        curr = monthly_data.get(current_month, {"income": 0, "expenses": 0, "categories": {}})
+        curr_income = curr["income"]
+        curr_expenses = curr["expenses"]
+        curr_savings = curr_income - curr_expenses
+        curr_savings_rate = (curr_savings / curr_income * 100) if curr_income > 0 else 0
+
+        # Previous month for comparison
+        prev_month_date = (today.replace(day=1) - timedelta(days=1))
+        prev_month_key = prev_month_date.strftime("%Y-%m")
+        prev = monthly_data.get(prev_month_key, {"income": 0, "expenses": 0, "categories": {}})
+        prev_expenses = prev["expenses"]
+        spending_mom = ((curr_expenses - prev_expenses) / prev_expenses * 100) if prev_expenses > 0 else 0
+
+        # Budget status for current month
+        budget_status = []
+        for cat, budget_amt in config.budgets.items():
+            if cat in BUDGET_EXCLUDED_CATEGORIES or budget_amt <= 0:
+                continue
+            actual = curr["categories"].get(cat, 0)
+            budget_status.append({
+                "category": cat,
+                "budget": budget_amt,
+                "actual": round(actual, 2),
+                "pct": round(actual / budget_amt * 100, 1) if budget_amt > 0 else 0,
+            })
+        budget_status.sort(key=lambda x: x["pct"], reverse=True)
+
+        # Monthly trend (last 6 months)
+        recent_months = sorted_months[-6:]
+        trend = []
+        for m in recent_months:
+            d = monthly_data[m]
+            trend.append({
+                "month": m,
+                "income": round(d["income"], 2),
+                "expenses": round(d["expenses"], 2),
+                "savings": round(d["income"] - d["expenses"], 2),
+            })
+
+        # Top spending categories (current month)
+        cat_spending = sorted(curr["categories"].items(), key=lambda x: x[1], reverse=True)[:8]
+
+        return jsonify({
+            "empty": False,
+            "current_month": current_month,
+            "income": round(curr_income, 2),
+            "expenses": round(curr_expenses, 2),
+            "savings": round(curr_savings, 2),
+            "savings_rate": round(curr_savings_rate, 1),
+            "spending_mom": round(spending_mom, 1),
+            "budget_status": budget_status,
+            "trend": trend,
+            "top_categories": [{"name": c, "amount": round(a, 2)} for c, a in cat_spending],
+        })
 
     return app
 
